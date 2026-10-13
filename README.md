@@ -1,13 +1,32 @@
 # Neon Outpost
 
-Free 3D top-down robot arena for two phones on the same Wi-Fi, with textured terrain and mobile controls.
+Free 3D top-down cooperative robot arena for two phones on the same Wi-Fi.
 
-GitHub Pages address after enabling hosting: https://refreshingday.github.io/multiplayerTest/
+Play: https://refreshingday.github.io/multiplayerTest/
 
-Choose Host, send the invite code to your friend, and paste their reply. Your friend chooses Join and creates the reply. Both tap Ready to play. Sharing the page link alone does not pair phones. Left stick moves; right stick aims and fires. Solo mode is available.
+## Joining
+- Host taps **Host a game**, then shares the six-digit room code or the room link.
+- Friend taps **Join a friend** and enters the six digits. A room link joins automatically.
+- Both players tap **Ready**.
 
-No game server, signaling service, STUN, or TURN is used. Wi-Fi must allow devices to communicate directly. Page loading requires internet for Three.js. Keep both game tabs open; hidden or interrupted tabs pause play.
+Room matching uses the free public PeerJS Cloud signaling service; internet access is needed while joining. It automatically exchanges connection information. Gameplay then uses the existing direct WebRTC connection with reliable controls and a separate unordered channel for updates. The temporary matching connection and cloud connection are closed after pairing. No STUN or TURN is used; Wi-Fi must allow direct device communication. Public matching service availability is outside this project's control.
 
-Enable hosting in Settings → Pages → Deploy from a branch → main → /(root) → Save.
+**Manual pairing** remains available in the menu if matching is unavailable. It exchanges the full invite and reply without a signaling service.
 
-Three.js is pinned to 0.160.1; its MIT license is included. Textures and models are generated in code. Source checks and mocked sessions can be verified without phones; browser rendering and a real two-phone connection still need device testing.
+## Responsive gameplay
+The guest predicts its own movement at 60 simulation ticks per second using the same speed, arena bounds and crate collisions as the host. Input ticks are numbered and resent until the host acknowledges processing them. Each authoritative snapshot corrects the guest position, then the guest replays only unacknowledged ticks; small visual corrections fade smoothly. Other players and enemies render smoothly between snapshots, and bullets advance locally between updates. A local muzzle flash responds immediately to firing; damage, bullet hits, health, waves, and scores remain host-authoritative.
+
+Controls: left stick moves, right stick aims and fires. Desktop: WASD or arrows, mouse, click or space to fire. Solo mode is available.
+
+Play pauses on hidden tabs, stale input, stale snapshots, or interrupted connections. Both players must choose Ready to resume. A restart requires both votes.
+
+## Hosting
+GitHub Pages: Settings → Pages → Deploy from a branch → main → /(root) → Save.
+No build step is needed.
+
+Three.js 0.160.1 and PeerJS 1.5.5 are loaded from jsDelivr. MIT notices are included in LICENSE-THREE.txt and LICENSE-PEERJS.txt. Textures and models are generated in code.
+PeerJS documentation: https://peerjs.com/client/faq
+
+Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
+
+The current page loads app-v3.js. The previous app.js is retained for older already-open pages; reload both phones before starting a new room.
