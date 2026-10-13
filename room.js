@@ -19,7 +19,7 @@ export class RoomLink{
  constructor(callbacks={}){
   this.callbacks=callbacks;this.role=null;this.session=null;
   this.direct=new PeerLink({
-   onStatus:(...args)=>this.callbacks.onStatus?.(...args),
+   onStatus:(text,error=false)=>this.callbacks.onStatus?.(error?text:'Connecting phones directly. Keep both game tabs open.',error),
    onMessage:m=>this.callbacks.onMessage?.(m),
    onOpen:()=>{const s=this.session;if(!this.active(s))return;s.upgraded=true;clearTimeout(s.joinTimer);this.cleanupBroker(s);this.callbacks.onOpen?.()},
    onClose:text=>{const s=this.session;this.close();if(s)this.callbacks.onClose?.(text)}
@@ -50,7 +50,7 @@ export class RoomLink{
    p.on('open',()=>{if(this.active(s)&&s.peer===p)finish();else try{p.destroy()}catch{}});
    p.on('error',error=>{
     if(!this.active(s)||s.peer!==p||s.upgraded)return;
-    if(!settled)finish(error);else this.fail(s,error.type==='peer-unavailable'?'Room not found. Ask your friend for their current six-digit code.':'Room connection failed. Try again or use manual pairing.');
+    if(!settled){if(error.type==='unavailable-id'){s.peer=null;try{p.destroy()}catch{}}finish(error)}else this.fail(s,error.type==='peer-unavailable'?'Room not found. Ask your friend for their current six-digit code.':'Room connection failed. Try again or use manual pairing.');
    });
    p.on('connection',conn=>{
     if(!this.active(s)||s.peer!==p||s.role!=='host'||s.conn||conn.metadata?.game!==TAG){try{conn.close()}catch{}return}
