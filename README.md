@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v5.js, game-core-v5.js, prediction-v5.js and fire-fx.js. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
+The current page loads app-v6.js, game-core-v6.js, prediction-v6.js, fire-fx-v6.js, arena-fx-v6.js and mobile-v6.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -40,3 +40,11 @@ Hold the right stick, mouse button or Space to gather fire for 0.30 seconds, the
 The guest predicts charging and casting immediately. The host alone chooses critical hits and applies impact damage, burns and score. Numbered input replay also reconstructs charge state; cast IDs prevent duplicate local/confirmed effects. Synthesized charge, whoosh and impact sounds unlock after a tap/key press; the speaker button mutes them. There are no new external art or audio files.
 
 Effects use fixed pools: 384 batched particles, 40 projectile slots, 24 damage-number sprites, 16 impact bursts, and at most 8 audio voices. Core snapshots retain a short bounded impact event history for unreliable updates. Packet-size, burn, critical, prediction, collision, effect-pool and simulated-stutter checks run before publishing; real phone visuals and sound still require a device test.
+
+
+## Mobile combat and powerful pickups
+The camera follows the local player at a closer zoom in portrait and landscape. Larger thumb controls, safe-area padding, readable input fields and a compact HUD support phone play. Players and enemies show temporary overhead health bars after damage; the local HUD also has a persistent health meter. The robot body squashes while charging, stretches on release and returns to rest.
+
+Glowing, labeled pickups begin after three seconds and spawn every six seconds while fewer than three remain. Uncollected pickups expire after 25 seconds. Walk within reach to collect one. All seven types rotate: Twin Fire (two projectiles), Haste (double movement speed), Inferno (double impact damage), Rapid Cast (double charging/cooldown rate), Piercing (projectiles pass through enemies), Blast Wave (area damage on impact), and Aegis (contact-damage immunity). Effects last 18 seconds, combine across types, and collecting the same effect refreshes it. Restart clears all upgrades. The HUD shows each active effect and its remaining duration.
+
+The host owns pickup placement, collection and damage. Guest input prediction includes movement speed, buff expiry, rapid charging and twin-shot feedback. Powered damage numbers match actual damage. Protocol version 6 requires both phones to reload and create a new room. Automated simulation and mocked rendering checks cover upgrades, expiry, prediction, health bars, casting transforms, multiplayer pause/restart, packet bounds and a sustained all-upgrade combat run. Actual mobile visuals, audio and touch ergonomics require testing on phones.
