@@ -29,7 +29,14 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v4.js and prediction-v4.js. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
+The current page loads app-v5.js, game-core-v5.js, prediction-v5.js and fire-fx.js. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
+
+## Fire magic attack
+Hold the right stick, mouse button or Space to gather fire for 0.30 seconds, then cast; keep holding for repeated casts. Releasing early cancels charging. The hand core grows during charge, the projectile streams flames, and confirmed impacts produce a flash, sparks, a white enemy flash and brief flinch. Hits ignite enemies for 1.2 seconds. Normal hits show 3, critical hits show a larger gold 6!, and burning ticks show 1. Enemy health is tuned for the slower, heavier attack.
+
+The guest predicts charging and casting immediately. The host alone chooses critical hits and applies impact damage, burns and score. Numbered input replay also reconstructs charge state; cast IDs prevent duplicate local/confirmed effects. Synthesized charge, whoosh and impact sounds unlock after a tap/key press; the speaker button mutes them. There are no new external art or audio files.
+
+Effects use fixed pools: 384 batched particles, 40 projectile slots, 24 damage-number sprites, 16 impact bursts, and at most 8 audio voices. Core snapshots retain a short bounded impact event history for unreliable updates. Packet-size, burn, critical, prediction, collision, effect-pool and simulated-stutter checks run before publishing; real phone visuals and sound still require a device test.
