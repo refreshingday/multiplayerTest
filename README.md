@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v10.js, game-core-v10.js, prediction-v10.js, fire-fx-v9.js, arena-fx-v9.js and mobile-v10.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
+The current page loads app-v11.js, game-core-v11.js, prediction-v11.js, fire-fx-v11.js, arena-fx-v11.js, wave-map-v11.js and mobile-v10.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -83,3 +83,15 @@ Tests cover four independent app clients, three direct links, targeted snapshots
 
 ## Automatic combat
 The host and every guest use the same target selection after moving. Guests predict charge and cast effects locally without waiting for a snapshot; the host remains authoritative for projectiles, hits, and damage. Targeting skips blocked enemies and retargets as enemies move or die. Releasing the right stick stops movement while automatic attacks continue. Restart a room after reloading every phone when updating from an older client.
+
+
+## Double enemy pressure and changing arenas
+Wave totals are doubled (wave 1: 96, wave 2: 132), enemy spawn intervals are halved, and the active enemy cap increases from 36 to 72. Enemy health and progressive type unlocks stay unchanged. Health bars and spawn telegraphs cover all 72 enemy slots; projectile and particle pools remain bounded.
+
+The host generates a fresh arrangement of four crates and two short walls at the beginning of each wave. The starting plaza stays clear; layouts avoid current players and pickups, reserve space along the arena edge for enemy spawns, and keep wide corridors between obstacles. Coordinates and dimensions are quantized before sharing, so every phone uses identical geometry. Movement prediction, target line of sight, both projectile types, knockback, radar and rendered objects all use this shared layout.
+
+Six procedural visual themes change floor patterns, crate and wall textures, lighting accents and background colors. Consecutive waves always use different themes. Existing meshes are reused and theme materials/textures are cached. The two-second wave introduction shows the new arena theme before combat starts.
+
+Automatic targeting considers living, fully spawned enemies only. It does not target players and does not add teammate avoidance; incidental friendly hits still cause knockback without damage.
+
+Checks cover generated-layout safety and path connectivity, dynamic wall collisions in authority and prediction, enemy-only targeting, all three guest clients receiving identical layouts and themes, wave transitions, doubled enemy limits, and bounded visual resources. These are simulation and mocked graphics checks; actual phone performance still needs device testing. Reload every phone and start a fresh room for this version.
