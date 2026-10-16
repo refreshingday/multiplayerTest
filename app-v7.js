@@ -105,7 +105,7 @@ function receive(m){
  if(m.t!=='state'||!Number.isSafeInteger(m.g)||m.g<1||!Number.isSafeInteger(m.e)||m.e<0||!Number.isSafeInteger(m.q)||!valid(m.s)||!Array.isArray(m.r)||m.r.length!==2||!Array.isArray(m.v)||m.v.length!==2||typeof m.visible!=='boolean')return;
  if(m.g<g||(m.g===g&&(m.e<e||(m.e===e&&m.q<=lastQ))))return;
  const changed=m.g!==g||m.e!==e;if(changed){clear();pending.clear()}
- if(m.g!==g)fireFX?.reset();
+ if(m.g!==g){resetPresentation();fireFX?.reset();}
  prediction.reconcile(m.s,m.moveAck,changed);smoothWorld.push(m.s,clock(),changed);
  g=m.g;e=m.e;lastQ=m.q;lastStateAt=clock();state=m.s;ready=m.r.map(Boolean);votes=m.v.map(Boolean);remoteVisible=m.visible;why=typeof m.why==='string'?m.why.slice(0,180):'Paused';
  if(Array.isArray(m.ack))for(const a of m.ack)pending.delete(a);
