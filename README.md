@@ -16,7 +16,7 @@ Room matching uses the free public PeerJS Cloud signaling service; internet acce
 ## Responsive gameplay
 The guest predicts its own movement at 60 simulation ticks per second using the same speed, arena bounds and crate collisions as the host. Input ticks are numbered and resent until the host acknowledges processing them. Each authoritative snapshot corrects the guest position, then the guest replays only unacknowledged ticks; small visual corrections fade smoothly. Other players and enemies render smoothly between snapshots, and bullets advance locally between updates. A local muzzle flash responds immediately to firing; damage, bullet hits, health, waves, and scores remain host-authoritative.
 
-Controls: left stick moves, right stick aims and fires. Desktop: WASD or arrows, mouse, click or space to fire. Solo mode is available.
+Controls: the right stick moves; aiming, charging, and firing are automatic. Desktop: WASD or arrows to move. Each player targets the closest living enemy with a clear projectile path, within fireball range. Spawning enemies are ignored. No target means no cast. Solo mode is available.
 
 Play pauses on hidden tabs, stale input, stale snapshots, or interrupted connections. Both players must choose Ready to resume. A restart requires both votes.
 
@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v9.js, game-core-v9.js, prediction-v9.js, fire-fx-v9.js, arena-fx-v9.js and mobile-v9.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
+The current page loads app-v10.js, game-core-v10.js, prediction-v10.js, fire-fx-v9.js, arena-fx-v9.js and mobile-v10.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -80,3 +80,6 @@ Cyan, Violet, Gold and Rose have distinct actors, score cards, charging effects,
 Enemy types unlock progressively: wave 1 only Stalkers, wave 2 introduces Runners, wave 3 Spitters and wave 4 Chargers. The first spawn in each early wave guarantees the newly introduced type. Later waves mix all four. Enemy HP, current wave quotas, two-second completion transitions, friendly knockback and temporary/permanent buff rules remain as in v8.
 
 Tests cover four independent app clients, three direct links, targeted snapshots and sender identity, fifth-player rejection, lobby seat reuse, signaling cleanup without losing gameplay, four-player movement/casting, consensus Ready/restart/upgrade flow, hidden-tab recovery, disconnect handling, enemy unlock gates, shared projectile quotas, four-player effect pools and dense packet bounds. A dense four-player snapshot remains below 31 KB; three minutes of simulated host stutters remain bounded. Solo and manual two-player flows also pass. These are simulations and mocked rendering/connection tests; actual four-phone Wi-Fi and rendering still require device testing. Reload every phone and create a fresh room for protocol 9.
+
+## Automatic combat
+The host and every guest use the same target selection after moving. Guests predict charge and cast effects locally without waiting for a snapshot; the host remains authoritative for projectiles, hits, and damage. Targeting skips blocked enemies and retargets as enemies move or die. Releasing the right stick stops movement while automatic attacks continue. Restart a room after reloading every phone when updating from an older client.
