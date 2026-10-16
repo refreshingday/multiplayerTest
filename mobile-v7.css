@@ -12,3 +12,5 @@ html,body{height:100%;overscroll-behavior:none}body{-webkit-tap-highlight-color:
 @media(prefers-reduced-motion:reduce){button{transition:none}#hit-vignette{box-shadow:inset 0 0 45px 12px #ff3f42}}
 
 #minimap{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);width:88px;height:66px;border:1px solid #4e7780;border-radius:7px;background:#06141fe8;opacity:.85;box-shadow:0 3px 12px #0005;image-rendering:pixelated;pointer-events:none}@media(max-width:370px){#minimap{width:70px;height:52.5px;bottom:16px}}@media(max-height:580px){#minimap{width:96px;height:72px;bottom:0}}
+
+.upgrade-actions{display:flex;justify-content:flex-end;gap:7px;margin:-7px -4px 9px}.upgrade-actions button{padding:8px 13px;font-size:11px;min-width:62px;min-height:44px}
