@@ -32,8 +32,9 @@ for(const perk of PERKS){
  const button=document.createElement('button');button.className='perk-card';button.style.setProperty('--perk-color',perk.color);
  const name=document.createElement('strong'),desc=document.createElement('span'),rank=document.createElement('small');name.textContent=perk.name;desc.textContent=perk.description;button.append(name,desc,rank);button.onclick=()=>selectPerk(perk.key);$('perk-grid').append(button);perkButtons.set(perk.key,{button,rank});
 }
+function choiceSafe(){return !document.hidden&&(mode==='solo'||(link.connected&&!link.interrupted&&remoteVisible===true));}
 function selectPerk(key){
- if(!state?.upgrade||state.paused||hold||state.over||state.upgrade.chosen[mine()]||!safe()||[...pending.values()].some(p=>p.m.type==='perk'))return;
+ if(!state?.upgrade||state.paused||hold||state.over||state.upgrade.chosen[mine()]||!choiceSafe()||[...pending.values()].some(p=>p.m.type==='perk'))return;
  if(role==='guest')action('perk',{key,wave:state.upgrade.wave});
  else {const before=phase();if(choosePerk(state,mine(),key,state.upgrade.wave)){clear();phaseBarrier(before);snap(true);hud();}}
 }
@@ -97,7 +98,7 @@ function receive(m){
   if(m.type==='visible'){const changed=remoteVisible!==m.value;remoteVisible=m.value;if(changed&&!m.value)pause('Friend left the game. Both tap Ready after returning.',ready.some(Boolean))}
   if(m.type==='pause')pause(typeof m.value==='string'?'Friend: '+m.value.slice(0,160):'Friend paused. Both tap Ready.',true);
   if(m.type==='ready'&&safe()&&!state.over&&!votes.some(Boolean)){ready[1]=true;resume()}
-  if(m.type==='perk'&&state.upgrade&&!state.paused&&!hold&&!state.over&&safe()&&m.value&&typeof m.value==='object'){const before=phase();if(choosePerk(state,1,m.value.key,m.value.wave))phaseBarrier(before);}
+  if(m.type==='perk'&&state.upgrade&&!state.paused&&!hold&&!state.over&&choiceSafe()&&m.value&&typeof m.value==='object'){const before=phase();if(choosePerk(state,1,m.value.key,m.value.wave))phaseBarrier(before);}
   if(m.type==='restart'){votes[1]=true;if(votes[0])reset();else pause('Friend requested a restart. Tap Restart to agree.',ready.some(Boolean))}
   snap(true);hud();return;
  }
@@ -137,7 +138,7 @@ function hud(){
 }
 $('ready').onclick=()=>{if(!state||!safe()||state.over||votes.some(Boolean))return;if(role==='guest')action('ready');else{ready[0]=true;resume();snap(true);hud()}};
 $('restart').onclick=()=>{if(!state)return;if(mode==='solo')reset();else if(role==='guest')action('restart');else{votes[0]=true;if(votes[1])reset();else pause('Restart requested. Waiting for friend.',ready.some(Boolean));snap(true);hud()}};
-$('pause').onclick=()=>stop('Paused. Tap Ready to continue.');$('menu').onclick=()=>{menu();say('Round ended. Create a new room to play again.')};
+$('pause').onclick=()=>stop('Paused. Tap Ready to continue.');$('upgrade-pause').onclick=()=>stop('Paused during upgrade selection. Tap Ready to continue.');$('upgrade-menu').onclick=()=>{$('menu').onclick()};$('menu').onclick=()=>{menu();say('Round ended. Create a new room to play again.')};
 $('solo').onclick=()=>{if(!loaded)return;menu();mode='solo';role='host';g=1;e=0;state=createGame('solo');ready=[true,false];votes=[false,false];$('panel').hidden=true;$('hud').hidden=false;lastFrame=clock();hud()};
 async function manualPair(kind){
  if(!loaded)return;menu();link=manualLink;pairKind=kind;$('choices').hidden=true;$('pair').hidden=false;$('in').value='';$('out').value='';$('out').hidden=true;$('copy').hidden=true;$('connect').hidden=false;$('connect').disabled=false;
