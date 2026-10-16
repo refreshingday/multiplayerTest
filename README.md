@@ -1,13 +1,13 @@
 # Neon Outpost
 
-Free 3D top-down cooperative robot arena for two phones on the same Wi-Fi.
+Free 3D top-down cooperative robot arena for up to four phones on the same Wi-Fi.
 
 Play: https://refreshingday.github.io/multiplayerTest/
 
 ## Joining
 - Host taps **Host a game**, then shares the six-digit room code or the room link.
 - Friend taps **Join a friend** and enters the six digits. A room link joins automatically.
-- Both players tap **Ready**.
+- Everyone taps **Ready**.
 
 Room matching uses the free public PeerJS Cloud signaling service; internet access is needed while joining. It automatically exchanges connection information. Gameplay then uses the existing direct WebRTC connection with reliable controls and a separate unordered channel for updates. The temporary matching connection and cloud connection are closed after pairing. No STUN or TURN is used; Wi-Fi must allow direct device communication. Public matching service availability is outside this project's control.
 
@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v8.js, game-core-v8.js, prediction-v8.js, fire-fx-v8.js, arena-fx-v8.js and mobile-v8.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
+The current page loads app-v9.js, game-core-v9.js, prediction-v9.js, fire-fx-v9.js, arena-fx-v9.js and mobile-v9.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -57,7 +57,7 @@ The scoreboard tracks each player's points, kills and actual damage, including b
 
 Mobile polish adds individual score cards, max-health-aware bars, a radar, wave and pickup announcements, a build summary, saved personal bests and center-touch casting. Hit feedback includes white/red material flashes, squash, stagger, rebound, a red edge overlay, damage numbers and bounded camera shake. Reduced-motion settings suppress shake. Spawn markers, pickup glows and shield rings remain pooled.
 
-Input epochs and held controls reset at upgrade phase transitions; heartbeats and snapshots continue while selecting. Pause/resume preserves choices. Outgoing snapshot numbers are compacted while authoritative simulation remains precise. Integration checks cover both choice orders, a 35-second wait, duplicate/stale picks, pause recovery, restart, attribution and packet bounds. A dense snapshot is below 27 KB; repeated simulated host stutters stay bounded for three minutes. Actual phone rendering, sound and touch ergonomics still require a device test. Reload both phones and create a fresh room after updating to protocol 8.
+Input epochs and held controls reset at upgrade phase transitions; heartbeats and snapshots continue while selecting. Pause/resume preserves choices. Outgoing snapshot numbers are compacted while authoritative simulation remains precise. Integration checks cover both choice orders, a 35-second wait, duplicate/stale picks, pause recovery, restart, attribution and packet bounds. A dense snapshot is below 27 KB; repeated simulated host stutters stay bounded for three minutes. Actual phone rendering, sound and touch ergonomics still require a device test. Reload both phones and create a fresh room after updating to protocol 9.
 
 
 ## Enemy variants, friendly knockback and wave transitions
@@ -69,4 +69,14 @@ Wave progression is explicit: a two-second wave introduction, combat, then a two
 
 All seven temporary buffs and ten permanent powers have generated circular vector icons in buff-icons-v8.js. Active buffs show a duration ring and seconds; permanent icons show rank. Tap an icon for a short effect description. Upgrade cards use the matching icons and concise descriptions. World pickups use the same circular designs. Icons are accessible buttons with 44-pixel touch targets; long builds scroll horizontally.
 
-Verification covers the two-second clear delay, queued-spawn guard, burn final kills, distinct random offers and rejecting unoffered powers, all enemy behaviors, harmless knockback in both directions, guest reconciliation, pause/restart flow, icon UI references and mocked rendering. A dense snapshot including all entity pools stays below 30 KB. A mixed-enemy simulation stays finite and bounded; three minutes of simulated host stutters do not trigger a spurious pause. Real phone rendering and touch feel still need device testing. Both phones must reload and create a fresh room for protocol 8.
+Verification covers the two-second clear delay, queued-spawn guard, burn final kills, distinct random offers and rejecting unoffered powers, all enemy behaviors, harmless knockback in both directions, guest reconciliation, pause/restart flow, icon UI references and mocked rendering. A dense snapshot including all entity pools stays below 30 KB. A mixed-enemy simulation stays finite and bounded; three minutes of simulated host stutters do not trigger a spurious pause. Real phone rendering and touch feel still need device testing. Both phones must reload and create a fresh room for protocol 9.
+
+
+## Four-player squads and progressive enemy unlocks
+Six-digit rooms now support a host plus up to three guests. The host lobby shows the shared code and connected count. Have everyone join before tapping Ready; the room locks when all currently connected players are ready. Each guest has an independent direct WebRTC connection to the host, input history, acknowledgements and player identity. There is no guest-to-guest networking or additional gameplay server. The host keeps its free matching connection available until the round starts, then closes matching while preserving all direct links. Manual invite/reply pairing remains a two-player fallback; solo play is unchanged.
+
+Cyan, Violet, Gold and Rose have distinct actors, score cards, charging effects, shields and health bars. Readiness, visibility pauses, restart voting and three-offer permanent upgrades include every active member. Leaving pauses the room and removes that seat; remaining players can Ready to continue, including nonconsecutive seats. A disconnected upgrade voter cannot block the next wave. The host leaving ends the room. Mid-round joining is closed; form a fresh room to add players after starting. Player projectile capacity is shared fairly across active casters without increasing transport or effect limits.
+
+Enemy types unlock progressively: wave 1 only Stalkers, wave 2 introduces Runners, wave 3 Spitters and wave 4 Chargers. The first spawn in each early wave guarantees the newly introduced type. Later waves mix all four. Enemy HP, current wave quotas, two-second completion transitions, friendly knockback and temporary/permanent buff rules remain as in v8.
+
+Tests cover four independent app clients, three direct links, targeted snapshots and sender identity, fifth-player rejection, lobby seat reuse, signaling cleanup without losing gameplay, four-player movement/casting, consensus Ready/restart/upgrade flow, hidden-tab recovery, disconnect handling, enemy unlock gates, shared projectile quotas, four-player effect pools and dense packet bounds. A dense four-player snapshot remains below 31 KB; three minutes of simulated host stutters remain bounded. Solo and manual two-player flows also pass. These are simulations and mocked rendering/connection tests; actual four-phone Wi-Fi and rendering still require device testing. Reload every phone and create a fresh room for protocol 9.
