@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v17.js, room-v17.js, peer-v17.js, game-core-v17.js, prediction-v17.js, fire-fx-v17.js, arena-fx-v17.js, wizard-models-v17.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
+The current page loads app-v18.js, room-v17.js, peer-v17.js, game-core-v17.js, prediction-v17.js, fire-fx-v18.js, arena-fx-v17.js, wizard-models-v17.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v18.css. Reload every phone and start a new room after updating.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -146,5 +146,9 @@ Run `npm ci` and `npm test` for the 28 Node checks. These cover damage and poiso
 Reload every phone and create a fresh room. Protocol 16 rooms are isolated from older versions; two-minute automatic reconnection remains available.
 
 
-## Ice piercing (current: protocol 17)
+## Ice piercing (protocol 17)
 Ice projectiles pierce one enemy by default and stop on their second enemy hit. Both hits retain full impact damage and the existing slow. Piercing upgrades stack with the class bonus. Regression checks cover actual casts hitting two targets without hitting a third, other classes retaining their existing impact limit, and stacking with permanent and temporary upgrades. Reload every phone and start a fresh protocol-17 room.
+
+
+## Clearer combat view (current: UI 18, protocol 17)
+Temporary and permanent buff circles are reduced from 44 to 32 pixels. Upgrades stay in a compact group at the upper left; the player leaderboard is a single column at the upper right in portrait and landscape. Wave and pickup announcements sit higher, with a separate landscape placement, and floating damage numbers begin above wizard hats. The gameplay camera shows 20% more world width and height than the previous view; the menu camera is unchanged. UI 18 remains compatible with protocol-17 rooms. Reload each phone to load the updated presentation.
