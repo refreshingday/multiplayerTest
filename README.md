@@ -16,7 +16,7 @@ Room matching uses the free public PeerJS Cloud signaling service; internet acce
 ## Responsive gameplay
 The guest predicts its own movement at 60 simulation ticks per second using the same speed, arena bounds and crate collisions as the host. Input ticks are numbered and resent until the host acknowledges processing them. Each authoritative snapshot corrects the guest position, then the guest replays only unacknowledged ticks; small visual corrections fade smoothly. Other players and enemies render smoothly between snapshots, and bullets advance locally between updates. A local muzzle flash responds immediately to firing; damage, bullet hits, health, waves, and scores remain host-authoritative.
 
-Controls: the right stick moves; aiming, charging, and firing are automatic. Desktop: WASD or arrows to move. Each player targets the closest living enemy with a clear projectile path, within fireball range. Spawning enemies are ignored. No target means no cast. Solo mode is available.
+Choose Fire, Electric, Ice or Grass before playing. Controls: the right stick moves; aiming, charging, and firing are automatic. Desktop: WASD or arrows to move. Each player targets the closest living enemy with a clear projectile path, within fireball range. Spawning enemies are ignored. No target means no cast. Solo mode is available.
 
 Play pauses on hidden tabs, stale input, stale snapshots, or interrupted connections. Both players must choose Ready to resume. A restart requires both votes.
 
@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v13.js, enemy-models-v12.js, game-core-v13.js, prediction-v11.js, fire-fx-v11.js, arena-fx-v11.js, wave-map-v11.js and mobile-v10.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
+The current page loads app-v14.js, game-core-v14.js, prediction-v14.js, fire-fx-v14.js, arena-fx-v14.js, wizard-models-v14.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -103,3 +103,20 @@ Model and mocked render checks cover all four silhouettes, hit-flash recovery, c
 
 ## Enemy-count tuning
 Enemy totals per wave are reduced by 20% from the previous release, rounded to whole enemies: wave 1 has 77 (previously 96), wave 2 has 106 (previously 132), and the capped wave total is 307 (previously 384). This affects initial games, restarts and subsequent waves. Other enemy attributes and wave progression use the existing rules.
+
+
+## Four elemental wizards, faster pickups and wider camera
+Choose a wizard on the menu or in the lobby before Ready. Choices are remembered locally, synchronized by the host, locked for the run, and retained across restarts. Multiple players may choose the same wizard; seat-color rings and scoreboard labels identify teammates.
+
+- Fire applies the existing burn.
+- Electric chains half the direct-hit damage to up to two nearby enemies within 3 units, respecting walls.
+- Ice slows enemy movement, including dashes, by 45% for 2 seconds.
+- Grass applies poison for 2 seconds, ticking every half-second and crediting its caster.
+
+Every class has a colored wizard outfit, charge effect, projectile and trail. Electric hits draw brief chain arcs; slowed and poisoned enemies have status colors and particles. Projectile collisions, damage, status effects and scores remain host-authoritative; guests predict elemental charging and casts immediately.
+
+Temporary pickups now first appear after 1.5 seconds and then every 3 seconds of combat (previously 3 and 6). Collected effects last 9 combat seconds instead of 18, with a six-pickup ground limit so extra spawns are not blocked by the old three-pickup cap. Timers freeze outside combat. Ground lifetime remains 25 seconds. Buff countdown rings and banners use the new duration. Shields display an expanding activation pulse, a persistent cyan wireframe bubble and floor ring, and fade/blink near expiry. Shield visuals disappear when protection ends.
+
+The gameplay camera displays 30% more world width and height in both portrait and landscape. Controls remain movement-only with automatic enemy targeting.
+
+Verification includes elemental damage/status rules, caster score credit, buff timing/capacity/expiry, four independent clients selecting and changing classes, Ready acknowledgment gating, class persistence, local guest spell prediction, wizard and shield visual pools, lightning reset, and camera bounds. These are simulations and mocked visual checks; actual phone performance and appearance still need device testing. Protocol 14 requires all phones to reload and start a fresh room.
