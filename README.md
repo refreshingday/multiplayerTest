@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v14.js, game-core-v14.js, prediction-v14.js, fire-fx-v14.js, arena-fx-v14.js, wizard-models-v14.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
+The current page loads app-v14-1.js, game-core-v14.js, prediction-v14.js, fire-fx-v14.js, arena-fx-v14.js, wizard-models-v14.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -120,3 +120,5 @@ Temporary pickups now first appear after 1.5 seconds and then every 3 seconds of
 The gameplay camera displays 30% more world width and height in both portrait and landscape. Controls remain movement-only with automatic enemy targeting.
 
 Verification includes elemental damage/status rules, caster score credit, buff timing/capacity/expiry, four independent clients selecting and changing classes, Ready acknowledgment gating, class persistence, local guest spell prediction, wizard and shield visual pools, lightning reset, and camera bounds. These are simulations and mocked visual checks; actual phone performance and appearance still need device testing. Protocol 14 requires all phones to reload and start a fresh room.
+
+Lobby selections are resent if another player joining changes the session epoch, so an in-flight character choice cannot leave Ready disabled.
