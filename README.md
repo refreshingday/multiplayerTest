@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v12.js, enemy-models-v12.js, game-core-v11.js, prediction-v11.js, fire-fx-v11.js, arena-fx-v11.js, wave-map-v11.js and mobile-v10.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
+The current page loads app-v13.js, enemy-models-v12.js, game-core-v13.js, prediction-v11.js, fire-fx-v11.js, arena-fx-v11.js, wave-map-v11.js and mobile-v10.css. Earlier client files are retained for already-open pages; reload both phones before starting a new room.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -100,3 +100,6 @@ Checks cover generated-layout safety and path connectivity, dynamic wall collisi
 Players retain the original robot model. Enemies now use separate low-poly creature models: spiked beetle Stalkers, winged Runners, floating tentacled Spitters, and armored horned Chargers. Their silhouettes, accents and movement details distinguish them at the mobile camera scale. Creature actors use shared geometry and materials with a fixed 72-actor pool; changing enemy types reuses part meshes. Hit flashes and squash reactions restore the correct creature colors, and reduced-motion settings disable extra creature movement.
 
 Model and mocked render checks cover all four silhouettes, hit-flash recovery, changing enemy types, four player robots alongside 72 creatures, guest rendering, hidden actors after wave clear, and bounded geometry/material/mesh allocation. Actual phone rendering still requires device testing. This visual update uses the existing gameplay protocol.
+
+## Enemy-count tuning
+Enemy totals per wave are reduced by 20% from the previous release, rounded to whole enemies: wave 1 has 77 (previously 96), wave 2 has 106 (previously 132), and the capped wave total is 307 (previously 384). This affects initial games, restarts and subsequent waves. Other enemy attributes and wave progression use the existing rules.
