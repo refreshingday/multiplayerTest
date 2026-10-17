@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
-import {FireFX,FeedbackGate} from '../fire-fx-v18.js';import {createGame} from '../game-core-v17.js';
+import {FireFX,FeedbackGate} from '../fire-fx-v19.js';import {createGame} from '../game-core-v19.js';
 const context=new Proxy({createRadialGradient:()=>({addColorStop(){}})},{get:(o,k)=>o[k]??(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>context})};
 const make=()=>{const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(40,1,.1,100);camera.position.set(0,26,18);camera.lookAt(0,0,0);return {scene,fx:new FireFX(THREE,scene,camera)}};
