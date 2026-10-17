@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v16.js, room-v16.js, peer-v16.js, game-core-v16.js, prediction-v16.js, fire-fx-v16.js, arena-fx-v16.js, wizard-models-v16.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
+The current page loads app-v17.js, room-v17.js, peer-v17.js, game-core-v17.js, prediction-v17.js, fire-fx-v17.js, arena-fx-v17.js, wizard-models-v17.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -110,7 +110,7 @@ Choose a wizard on the menu or in the lobby before Ready. Choices are remembered
 
 - Fire deals 3 impact damage (6 on a critical hit), without burn.
 - Electric chains half the direct-hit damage to up to two nearby enemies within 3 units, respecting walls.
-- Ice slows enemy movement, including dashes, by 45% for 2 seconds.
+- Ice slows enemy movement, including dashes, by 45% for 2 seconds and pierces one enemy by default, allowing each projectile to hit two enemies. Permanent piercing upgrades add to this class bonus; the temporary Piercing pickup retains its full-arena piercing allowance.
 - Grass deals 2 impact damage (4 on a critical hit) and applies poison for 3 seconds, crediting its caster. Six half-second ticks ramp through 1, 1, 2, 2, 3, 3 damage. Damage upgrades scale impact and poison; critical hits only increase impact. Repeated hits refresh the duration without resetting the ramp or postponing the next tick.
 
 Every class has a colored wizard outfit, charge effect, projectile and trail. Electric hits draw brief chain arcs; slowed and poisoned enemies have status colors and particles. Projectile collisions, damage, status effects and scores remain host-authoritative; guests predict elemental charging and casts immediately.
@@ -138,9 +138,13 @@ Verification covers initial four-player pairing, authenticated seat recovery, si
 Recovery snapshots support bounded messages up to 64 KiB, including dense 72-enemy arenas with elemental status effects; channel backpressure and inbound size limits remain enforced.
 
 
-## Elemental combat update (current: protocol 16)
+## Elemental combat update (protocol 16)
 Fire now deals impact damage only. Poison has a 2-damage base impact and grows more painful over time, as detailed above. Electric projectiles are extruded jagged lightning bolts with flickering branches; ice uses a crystal spear with trailing fins; poison uses a pulsing glob with orbiting bubbles and separate droplet tails. Charging, trails, impacts, and predicted guest casts use the corresponding elemental forms and particle shapes. Shared effect pools reuse geometry and materials.
 
-Run `npm ci` and `npm test` for the 26 Node checks. These cover damage and poison timing, refresh and expiry, upgrade scaling and attribution, ice and lightning behavior, friendly knockback, four-player prediction, dense snapshots, wave progression, actual Three.js geometry and effect-pool reuse, and version-16 wiring. Rendering checks use Three.js without a GPU; phone appearance, shader compilation, sound, touch, and real four-device networking still require device testing.
+Run `npm ci` and `npm test` for the 28 Node checks. These cover damage and poison timing, refresh and expiry, upgrade scaling and attribution, ice and lightning behavior, friendly knockback, four-player prediction, dense snapshots, wave progression, actual Three.js geometry and effect-pool reuse, and version-17 wiring. Rendering checks use Three.js without a GPU; phone appearance, shader compilation, sound, touch, and real four-device networking still require device testing.
 
 Reload every phone and create a fresh room. Protocol 16 rooms are isolated from older versions; two-minute automatic reconnection remains available.
+
+
+## Ice piercing (current: protocol 17)
+Ice projectiles pierce one enemy by default and stop on their second enemy hit. Both hits retain full impact damage and the existing slow. Piercing upgrades stack with the class bonus. Regression checks cover actual casts hitting two targets without hitting a third, other classes retaining their existing impact limit, and stacking with permanent and temporary upgrades. Reload every phone and start a fresh protocol-17 room.
