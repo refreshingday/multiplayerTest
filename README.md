@@ -4,6 +4,8 @@ Free 3D top-down cooperative robot arena for up to four phones on the same Wi-Fi
 
 Play: https://refreshingday.github.io/multiplayerTest/
 
+Puff River (fart-powered rafting for up to four players): https://refreshingday.github.io/multiplayerTest/puff-river/
+
 ## Joining
 - Host taps **Host a game**, then shares the six-digit room code or the room link.
 - Friend taps **Join a friend** and enters the six digits. A room link joins automatically.
