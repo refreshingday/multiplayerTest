@@ -9,7 +9,7 @@ Play: https://refreshingday.github.io/multiplayerTest/
 - Friend taps **Join a friend** and enters the six digits. A room link joins automatically.
 - Everyone taps **Ready**.
 
-Room matching uses the free public PeerJS Cloud signaling service; internet access is needed while joining. It automatically exchanges connection information. Gameplay then uses the existing direct WebRTC connection with reliable controls and a separate unordered channel for updates. The temporary matching connection and cloud connection are closed after pairing. No STUN or TURN is used; Wi-Fi must allow direct device communication. Public matching service availability is outside this project's control.
+Room matching uses the free public PeerJS Cloud signaling service; internet access is needed while joining. It automatically exchanges connection information. Gameplay then uses the existing direct WebRTC connection with reliable controls and a separate unordered channel for updates. Pairing data channels close after a direct gameplay link opens; the small PeerJS cloud connection remains available in the background so returning players can reconnect automatically. No STUN or TURN is used; Wi-Fi must allow direct device communication. Public matching service availability is outside this project's control.
 
 **Manual pairing** remains available in the menu if matching is unavailable. It exchanges the full invite and reply without a signaling service.
 
@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v14-1.js, game-core-v14.js, prediction-v14.js, fire-fx-v14.js, arena-fx-v14.js, wizard-models-v14.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
+The current page loads app-v15.js, room-v15.js, peer-v15.js, game-core-v14.js, prediction-v14.js, fire-fx-v14.js, arena-fx-v14.js, wizard-models-v14.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -73,7 +73,7 @@ Verification covers the two-second clear delay, queued-spawn guard, burn final k
 
 
 ## Four-player squads and progressive enemy unlocks
-Six-digit rooms now support a host plus up to three guests. The host lobby shows the shared code and connected count. Have everyone join before tapping Ready; the room locks when all currently connected players are ready. Each guest has an independent direct WebRTC connection to the host, input history, acknowledgements and player identity. There is no guest-to-guest networking or additional gameplay server. The host keeps its free matching connection available until the round starts, then closes matching while preserving all direct links. Manual invite/reply pairing remains a two-player fallback; solo play is unchanged.
+Six-digit rooms now support a host plus up to three guests. The host lobby shows the shared code and connected count. Have everyone join before tapping Ready; the room locks when all currently connected players are ready. Each guest has an independent direct WebRTC connection to the host, input history, acknowledgements and player identity. There is no guest-to-guest networking or additional gameplay server. The host keeps its free matching connection available throughout the session for authenticated reconnection; starting the round locks out new players while preserving returning player seats. Manual invite/reply pairing remains a two-player fallback; solo play is unchanged.
 
 Cyan, Violet, Gold and Rose have distinct actors, score cards, charging effects, shields and health bars. Readiness, visibility pauses, restart voting and three-offer permanent upgrades include every active member. Leaving pauses the room and removes that seat; remaining players can Ready to continue, including nonconsecutive seats. A disconnected upgrade voter cannot block the next wave. The host leaving ends the room. Mid-round joining is closed; form a fresh room to add players after starting. Player projectile capacity is shared fairly across active casters without increasing transport or effect limits.
 
@@ -122,3 +122,17 @@ The gameplay camera displays 30% more world width and height in both portrait an
 Verification includes elemental damage/status rules, caster score credit, buff timing/capacity/expiry, four independent clients selecting and changing classes, Ready acknowledgment gating, class persistence, local guest spell prediction, wizard and shield visual pools, lightning reset, and camera bounds. These are simulations and mocked visual checks; actual phone performance and appearance still need device testing. Protocol 14 requires all phones to reload and start a fresh room.
 
 Lobby selections are resent if another player joining changes the session epoch, so an in-flight character choice cannot leave Ready disabled.
+
+
+## Automatic reconnection for six-digit rooms
+Brief direct-link interruptions no longer remove the player or reset the game. The host pauses the arena when the dropout is detected and reserves the original seat for up to two minutes. The returning guest retries automatically with bounded backoff, rebuilds its direct link, and authenticates with a private random resume credential delivered during initial pairing. New players cannot take reserved seats or join a running round using only the room code.
+
+The host retains player identity, wizard, position, health, score, kills, damage, permanent upgrades, temporary buff timers, enemies, wave progress and any pending upgrade offers. A fresh synchronization barrier clears stale movement history; the host waits for every active guest to acknowledge the authoritative snapshot before automatically resuming a game that was running. Manually paused games stay paused. A manual pause during recovery cancels automatic resume. Each guest recovers independently, and the squad waits until all active members have synced. Late messages from replaced links are ignored.
+
+A small signaling connection now stays available throughout room play and reconnects in the background if it drops. Gameplay remains direct WebRTC; no gameplay server or relay is added. Same-Wi-Fi support remains the current reliable connection mode; this does not add STUN/TURN support for mobile-data networks. Signaling internet access is needed to rebuild a failed direct connection. Keep the host and guest game tabs open. Closing/reloading the host ends the session; automatic recovery does not migrate the host or restore a closed tab. Manual invite/reply mode retains its existing behavior and needs fresh codes if its direct connection fully closes.
+
+Explicitly leaving removes a connected guest immediately. Ending the host room notifies connected guests. If recovery cannot succeed within two minutes, the reserved seat is released and the remaining group can Ready to continue. Guests see a reconnecting screen while the arena is paused.
+
+Verification covers initial four-player pairing, authenticated seat recovery, simultaneous guest dropouts, stale-link rejection, invalid credentials, locked-room admission, signaling reconnection and recreation, retry backoff, timeouts, explicit leave/end, preserved gameplay and upgrade state, prediction acknowledgments, and manual-pause behavior. These are mocked transport and gameplay simulations; real phone Wi-Fi switching and browser suspension still need device testing. Reload all phones and create a fresh room for protocol 15.
+
+Recovery snapshots support bounded messages up to 64 KiB, including dense 72-enemy arenas with elemental status effects; channel backpressure and inbound size limits remain enforced.
