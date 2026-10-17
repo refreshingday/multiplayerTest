@@ -2,8 +2,8 @@ import {webcrypto} from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {rtcConfiguration,candidateSummary,selectedRoute,diagnosticReport,diagnosticText,RELEASE} from '../network-v20.js';
-import {PeerLink} from '../peer-v20.js';
+import {rtcConfiguration,candidateSummary,selectedRoute,diagnosticReport,diagnosticText,RELEASE} from '../network-v21.js';
+import {PeerLink} from '../peer-v21.js';
 if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const strip=s=>s.replace(/^import .*;\n/gm,'').replace(/\bexport /g,'');
@@ -11,7 +11,7 @@ function iceLab(){
  let now=0,serial=0;const timers=new Map();
  const setTimeout=(fn,ms)=>{const id=++serial;timers.set(id,{fn,at:now+ms});return id},clearTimeout=id=>timers.delete(id);
  const advance=ms=>{const end=now+ms;while(true){const next=[...timers].filter(([,v])=>v.at<=end).sort((a,b)=>a[1].at-b[1].at)[0];if(!next)break;now=next[1].at;timers.delete(next[0]);next[1].fn();}now=end;};
- const api=new Function('setTimeout','clearTimeout',strip(read('network-v20.js'))+';return {gatherIce,probeNetwork};')(setTimeout,clearTimeout);
+ const api=new Function('setTimeout','clearTimeout',strip(read('network-v21.js'))+';return {gatherIce,probeNetwork};')(setTimeout,clearTimeout);
  const listeners=new Map(),pc={iceGatheringState:'gathering',iceConnectionState:'new',localDescription:{sdp:''},addEventListener:(n,fn)=>listeners.set(n,fn),removeEventListener:n=>listeners.delete(n)};
  return {...api,pc,advance,timers,listeners,emit:()=>listeners.get('icecandidate')?.()};
 }
@@ -21,7 +21,7 @@ test('fresh STUN and TURN configuration is shared by matching and gameplay',()=>
  const previous=globalThis.RTCPeerConnection;let actual;
  globalThis.RTCPeerConnection=class{constructor(config){actual=config;}close(){}};
  try{const link=new PeerLink();const s=link._fresh('host');assert.deepEqual(actual,b);link.close();assert.ok(s.closed);}finally{globalThis.RTCPeerConnection=previous;}
- assert.match(read('room-v20.js'),/config:rtcConfiguration\(\)/);
+ assert.match(read('room-v21.js'),/config:rtcConfiguration\(\)/);
 });
 test('candidate reports count routes without exposing addresses or credentials',()=>{
  const report={stage:'gathering',...candidateSummary({localDescription:{sdp:candidate('host')+candidate('srflx')+candidate('relay')},iceConnectionState:'checking'})};
