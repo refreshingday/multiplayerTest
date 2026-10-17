@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8'),strip=s=>s.replace(/^import .*;\n/gm,'').replace(/\bexport /g,'');
-import {rtcConfiguration as RTC_CONFIG} from '../network-v20.js';
-const ROOM_SOURCE=strip(read('room-v20.js'));
+import {rtcConfiguration as RTC_CONFIG} from '../network-v21.js';
+const ROOM_SOURCE=strip(read('room-v21.js'));
 
 function environment(){
  let now=1000,nextTimer=1,nextPeer=1,nextOffer=1,nonce=1;const timers=new Map(),jobs=[],peers=new Map(),offers=new Map();let blocked=false,latency=0;
