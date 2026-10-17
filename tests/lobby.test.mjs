@@ -9,11 +9,11 @@ function makeEnv(source,hero='fire'){
  const api=fn(document,{now:()=>clock.time},Peer,Peer,class{},class{},class{},class{},class{},{},{hash:'',href:'https://refreshingday.github.io/multiplayerTest/'},(n,f)=>windowEvents[n]=f,()=>{},{getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v)},{matchMedia:()=>({matches:false})});api.disableRender();
  return {api,clock,sent,windowEvents,documentEvents,document,nodes,saved};
 }
-const appSource=['game-core-v19.js','prediction-v19.js','buff-icons-v14.js','network-v20.js'].map(p=>strip(read(p))).join('\n')+'\n'+strip(read('app-v20.js')).replace(/\nboot\(\);\s*$/,'')+'\n'+"\nreturn {safe,pendingPair:n=>link.pendingCount=n,chooseHero,heroHUD,receive,frame,hud,selectPerk,active,valid,wireState,menu,reconnecting,reconnected,networkBusy,networkPause,finishRecovery,snapshot:()=>snap(true),join:joined,leave:left,solo:()=>{loaded=true;$('solo').onclick();},open:(r,id=0,room=true)=>{link=room?roomLink:manualLink;link.role=r;link.localId=id;link.connected=true;opened();},ready:()=>$('ready').onclick(),restart:()=>$('restart').onclick(),pause:()=>$('pause').onclick(),state:()=>state,get:()=>({id:mine(),chosenHero,g,e,hold,ready:ready.slice(),pred:prediction.player,frames:prediction.frames.length,pending:[...pending.values()].map(p=>p.m),started:runStarted,recovery:recovery?{resume:recovery.resume}:null,guestRecovering,guestNetworkWait}),events:()=>prediction.drainEvents(),connection:(id,on)=>{if(role==='host'){if(on)link.down.delete(id);else link.down.add(id);}else{link.connected=on;link.interrupted=!on;}},disableRender:()=>{render=()=>{}}};";
+const appSource=['game-core-v21.js','prediction-v21.js','buff-icons-v21.js','network-v21.js'].map(p=>strip(read(p))).join('\n')+'\n'+strip(read('app-v21.js')).replace(/\nboot\(\);\s*$/,'')+'\n'+"\nreturn {safe,pendingPair:n=>link.pendingCount=n,chooseHero,heroHUD,receive,frame,hud,selectPerk,active,valid,wireState,menu,reconnecting,reconnected,networkBusy,networkPause,finishRecovery,snapshot:()=>snap(true),join:joined,leave:left,solo:()=>{loaded=true;$('solo').onclick();},open:(r,id=0,room=true)=>{link=room?roomLink:manualLink;link.role=r;link.localId=id;link.connected=true;opened();},ready:()=>$('ready').onclick(),restart:()=>$('restart').onclick(),pause:()=>$('pause').onclick(),state:()=>state,get:()=>({id:mine(),chosenHero,g,e,hold,ready:ready.slice(),pred:prediction.player,frames:prediction.frames.length,pending:[...pending.values()].map(p=>p.m),started:runStarted,recovery:recovery?{resume:recovery.resume}:null,guestRecovering,guestNetworkWait}),events:()=>prediction.drainEvents(),connection:(id,on)=>{if(role==='host'){if(on)link.down.delete(id);else link.down.add(id);}else{link.connected=on;link.interrupted=!on;}},disableRender:()=>{render=()=>{}}};";
 test('a room starts with two, three or four connected players even with an unfinished extra pairing',()=>{
  for(let count=1;count<=4;count++){
   const e=makeEnv(appSource);e.api.open('host');
-  for(let id=1;id<count;id++){e.api.join(id);e.api.receive({t:'hello',version:20,v:true,hero:'fire'},id);}
+  for(let id=1;id<count;id++){e.api.join(id);e.api.receive({t:'hello',version:21,v:true,hero:'fire'},id);}
   e.api.pendingPair(1);e.api.hud();assert.equal(e.nodes.get('ready').disabled,count===1);
   e.api.ready();
   for(let id=1;id<count;id++){const k=e.api.get();e.api.receive({t:'action',a:1,g:k.g,e:k.e,type:'ready'},id);}
@@ -22,8 +22,16 @@ test('a room starts with two, three or four connected players even with an unfin
 });
 test('all connected players must be ready and lobby build labels agree',()=>{
  const e=makeEnv(appSource);e.api.open('host');
- for(let id=1;id<=2;id++){e.api.join(id);e.api.receive({t:'hello',version:20,v:true,hero:'fire'},id);}
+ for(let id=1;id<=2;id++){e.api.join(id);e.api.receive({t:'hello',version:21,v:true,hero:'fire'},id);}
  e.api.ready();let k=e.api.get();e.api.receive({t:'action',a:1,g:k.g,e:k.e,type:'ready'},1);assert.equal(e.api.get().started,false);
  e.api.receive({t:'action',a:1,g:k.g,e:k.e,type:'ready'},2);assert.equal(e.api.get().started,true);
- for(const id of ['release-main','release-join','release-lobby'])assert.equal(e.nodes.get(id).textContent,'v20 · Updated 17 Oct 2026');
+ for(const id of ['release-main','release-join','release-lobby'])assert.equal(e.nodes.get(id).textContent,'v21 · Updated 17 Oct 2026');
+});
+
+test('guests accept bounded heart drops and authoritative healing with the new protocol',()=>{
+ const host=makeEnv(appSource),guest=makeEnv(appSource);
+ host.api.open('host');host.api.join(1);guest.api.open('guest',1);
+ const pump=()=>{for(let n=0;n<12;n++){const h=host.sent.splice(0),g=guest.sent.splice(0);for(const x of h)if(x.target===1)guest.api.receive(x.m,0);for(const x of g)host.api.receive(x.m,1);}};
+ pump();const s=host.api.state();s.players[1].hp=60;s.pickups=Array.from({length:12},(_,i)=>({id:800+i,key:i<6?'heart':'shield',x:i-6,z:0,ttl:15}));s.players[1].buffs.shield=4.5;
+ host.api.snapshot();pump();assert.equal(guest.api.state().players[1].hp,60);assert.equal(guest.api.state().players[1].buffs.shield,4.5);assert.equal(guest.api.state().pickups.length,12);assert.equal(guest.api.state().pickups.filter(p=>p.key==='heart').length,6);
 });
