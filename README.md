@@ -29,17 +29,17 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v15.js, room-v15.js, peer-v15.js, game-core-v14.js, prediction-v14.js, fire-fx-v14.js, arena-fx-v14.js, wizard-models-v14.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
+The current page loads app-v16.js, room-v16.js, peer-v16.js, game-core-v16.js, prediction-v16.js, fire-fx-v16.js, arena-fx-v16.js, wizard-models-v16.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v14.css. Reload every phone and start a new room after updating.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
 
 ## Fire magic attack
-Hold the right stick, mouse button or Space to gather fire for 0.30 seconds, then cast; keep holding for repeated casts. Releasing early cancels charging. The hand core grows during charge, the projectile streams flames, and confirmed impacts produce a flash, sparks, a white enemy flash and brief flinch. Hits ignite enemies for 1.2 seconds. Normal hits show 3, critical hits show a larger gold 6!, and burning ticks show 1. Enemy health is tuned for the slower, heavier attack.
+Hold the right stick, mouse button or Space to gather fire for 0.30 seconds, then cast; keep holding for repeated casts. Releasing early cancels charging. The hand core grows during charge, the projectile streams flames, and confirmed impacts produce a flash, sparks, a white enemy flash and brief flinch. Fire hits deal 3 damage, or 6 on a critical hit, with no burn or damage over time. Enemy health is tuned for the slower, heavier attack.
 
-The guest predicts charging and casting immediately. The host alone chooses critical hits and applies impact damage, burns and score. Numbered input replay also reconstructs charge state; cast IDs prevent duplicate local/confirmed effects. Synthesized charge, whoosh and impact sounds unlock after a tap/key press; the speaker button mutes them. There are no new external art or audio files.
+The guest predicts charging and casting immediately. The host alone chooses critical hits and applies impact damage, poison and score. Numbered input replay also reconstructs charge state; cast IDs prevent duplicate local/confirmed effects. Synthesized charge, whoosh and impact sounds unlock after a tap/key press; the speaker button mutes them. There are no new external art or audio files.
 
-Effects use fixed pools: 384 batched particles, 40 projectile slots, 24 damage-number sprites, 16 impact bursts, and at most 8 audio voices. Core snapshots retain a short bounded impact event history for unreliable updates. Packet-size, burn, critical, prediction, collision, effect-pool and simulated-stutter checks run before publishing; real phone visuals and sound still require a device test.
+Effects use fixed pools: 384 batched particles, 56 projectile slots and 4 charging slots, 24 damage-number sprites, 16 impact bursts, and at most 8 audio voices. Core snapshots retain a short bounded impact event history for unreliable updates. Packet-size, poison, critical, prediction, collision, effect-pool and simulated-stutter checks run before publishing; real phone visuals and sound still require a device test.
 
 
 ## Mobile combat and powerful pickups
@@ -53,7 +53,7 @@ The host owns pickup placement, collection and damage. Guest input prediction in
 ## Overdrive waves, individual scores and permanent builds
 Waves now contain exactly three times the previous enemy quota, with a 36-enemy simultaneous cap, half the previous spawn interval and 15% faster enemies. Enemy HP remains 6 + floor(wave / 2). Spawns have a short entrance telegraph.
 
-The scoreboard tracks each player's points, kills and actual damage, including burns and splash. Kill credit goes to the finisher; damage credit records each contribution. Team score is the sum. Clear a wave to freeze the arena and choose one permanent upgrade from ten: Ember Might (damage), Wind Walker (movement), Quick Cast (cast rate), Phoenix Heart (maximum health), Stone Skin (damage reduction), Wild Spark (critical chance), Forked Flame (extra projectiles), Soul Spear (piercing), Sunburst (explosive hits) and Life Siphon (healing on kills). Ranks and caps appear on cards. Both players choose independently; the next wave starts after both choices. Builds persist for the run, combine with temporary pickups and reset on restart.
+The scoreboard tracks each player's points, kills and actual damage, including poison and splash. Kill credit goes to the finisher; damage credit records each contribution. Team score is the sum. Clear a wave to freeze the arena and choose one permanent upgrade from ten: Ember Might (damage), Wind Walker (movement), Quick Cast (cast rate), Phoenix Heart (maximum health), Stone Skin (damage reduction), Wild Spark (critical chance), Forked Flame (extra projectiles), Soul Spear (piercing), Sunburst (explosive hits) and Life Siphon (healing on kills). Ranks and caps appear on cards. Both players choose independently; the next wave starts after both choices. Builds persist for the run, combine with temporary pickups and reset on restart.
 
 Mobile polish adds individual score cards, max-health-aware bars, a radar, wave and pickup announcements, a build summary, saved personal bests and center-touch casting. Hit feedback includes white/red material flashes, squash, stagger, rebound, a red edge overlay, damage numbers and bounded camera shake. Reduced-motion settings suppress shake. Spawn markers, pickup glows and shield rings remain pooled.
 
@@ -63,13 +63,13 @@ Input epochs and held controls reset at upgrade phase transitions; heartbeats an
 ## Enemy variants, friendly knockback and wave transitions
 Current waves have twice the v7 quota (6 × min(32, 5 + wave × 3)); enemy HP remains 6 + floor(wave / 2). The simultaneous enemy cap stays 36. Four types mix from wave one: orange Stalkers chase, smaller green Runners move faster, purple Spitters wind up and fire red bolts while maintaining range, and red Chargers visibly wind up before a short dash. Hostile projectiles have a separate 12-shot pool and never consume the player projectile allowance.
 
-Player projectiles can hit the other player, causing a short wall-safe push only. They do not damage, burn, award score, trigger damage numbers or heal the attacker. A separate push event and sequence synchronize guest displacement without input replay erasing it. Self-hits are ignored. Shield immunity still protects against enemy attacks.
+Player projectiles can hit the other player, causing a short wall-safe push only. They do not damage, apply status effects, award score, trigger damage numbers or heal the attacker. A separate push event and sequence synchronize guest displacement without input replay erasing it. Self-hits are ignored. Shield immunity still protects against enemy attacks.
 
 Wave progression is explicit: a two-second wave introduction, combat, then a two-second Wave Cleared transition after BOTH the unspawned quota and every living enemy reach zero. Combat projectiles clear at the boundary; pending spawns prevent early completion. Real pauses freeze countdowns. After the clear transition, each player receives three distinct random host-generated permanent upgrade offers, excluding maxed powers. Choices are validated against that player's current offers, and both players must finish before the next numbered wave introduction begins. Restart resets the run to wave one.
 
 All seven temporary buffs and ten permanent powers have generated circular vector icons in buff-icons-v8.js. Active buffs show a duration ring and seconds; permanent icons show rank. Tap an icon for a short effect description. Upgrade cards use the matching icons and concise descriptions. World pickups use the same circular designs. Icons are accessible buttons with 44-pixel touch targets; long builds scroll horizontally.
 
-Verification covers the two-second clear delay, queued-spawn guard, burn final kills, distinct random offers and rejecting unoffered powers, all enemy behaviors, harmless knockback in both directions, guest reconciliation, pause/restart flow, icon UI references and mocked rendering. A dense snapshot including all entity pools stays below 30 KB. A mixed-enemy simulation stays finite and bounded; three minutes of simulated host stutters do not trigger a spurious pause. Real phone rendering and touch feel still need device testing. Both phones must reload and create a fresh room for protocol 9.
+Verification covers the two-second clear delay, queued-spawn guard, poison final kills, distinct random offers and rejecting unoffered powers, all enemy behaviors, harmless knockback in both directions, guest reconciliation, pause/restart flow, icon UI references and mocked rendering. A dense snapshot including all entity pools stays below 30 KB. A mixed-enemy simulation stays finite and bounded; three minutes of simulated host stutters do not trigger a spurious pause. Real phone rendering and touch feel still need device testing. Both phones must reload and create a fresh room for protocol 9.
 
 
 ## Four-player squads and progressive enemy unlocks
@@ -108,10 +108,10 @@ Enemy totals per wave are reduced by 20% from the previous release, rounded to w
 ## Four elemental wizards, faster pickups and wider camera
 Choose a wizard on the menu or in the lobby before Ready. Choices are remembered locally, synchronized by the host, locked for the run, and retained across restarts. Multiple players may choose the same wizard; seat-color rings and scoreboard labels identify teammates.
 
-- Fire applies the existing burn.
+- Fire deals 3 impact damage (6 on a critical hit), without burn.
 - Electric chains half the direct-hit damage to up to two nearby enemies within 3 units, respecting walls.
 - Ice slows enemy movement, including dashes, by 45% for 2 seconds.
-- Grass applies poison for 2 seconds, ticking every half-second and crediting its caster.
+- Grass deals 2 impact damage (4 on a critical hit) and applies poison for 3 seconds, crediting its caster. Six half-second ticks ramp through 1, 1, 2, 2, 3, 3 damage. Damage upgrades scale impact and poison; critical hits only increase impact. Repeated hits refresh the duration without resetting the ramp or postponing the next tick.
 
 Every class has a colored wizard outfit, charge effect, projectile and trail. Electric hits draw brief chain arcs; slowed and poisoned enemies have status colors and particles. Projectile collisions, damage, status effects and scores remain host-authoritative; guests predict elemental charging and casts immediately.
 
@@ -136,3 +136,11 @@ Explicitly leaving removes a connected guest immediately. Ending the host room n
 Verification covers initial four-player pairing, authenticated seat recovery, simultaneous guest dropouts, stale-link rejection, invalid credentials, locked-room admission, signaling reconnection and recreation, retry backoff, timeouts, explicit leave/end, preserved gameplay and upgrade state, prediction acknowledgments, and manual-pause behavior. These are mocked transport and gameplay simulations; real phone Wi-Fi switching and browser suspension still need device testing. Reload all phones and create a fresh room for protocol 15.
 
 Recovery snapshots support bounded messages up to 64 KiB, including dense 72-enemy arenas with elemental status effects; channel backpressure and inbound size limits remain enforced.
+
+
+## Elemental combat update (current: protocol 16)
+Fire now deals impact damage only. Poison has a 2-damage base impact and grows more painful over time, as detailed above. Electric projectiles are extruded jagged lightning bolts with flickering branches; ice uses a crystal spear with trailing fins; poison uses a pulsing glob with orbiting bubbles and separate droplet tails. Charging, trails, impacts, and predicted guest casts use the corresponding elemental forms and particle shapes. Shared effect pools reuse geometry and materials.
+
+Run `npm ci` and `npm test` for the 26 Node checks. These cover damage and poison timing, refresh and expiry, upgrade scaling and attribution, ice and lightning behavior, friendly knockback, four-player prediction, dense snapshots, wave progression, actual Three.js geometry and effect-pool reuse, and version-16 wiring. Rendering checks use Three.js without a GPU; phone appearance, shader compilation, sound, touch, and real four-device networking still require device testing.
+
+Reload every phone and create a fresh room. Protocol 16 rooms are isolated from older versions; two-minute automatic reconnection remains available.
