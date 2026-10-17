@@ -111,7 +111,7 @@ Enemy totals per wave are reduced by 20% from the previous release, rounded to w
 Choose a wizard on the menu or in the lobby before Ready. Choices are remembered locally, synchronized by the host, locked for the run, and retained across restarts. Multiple players may choose the same wizard; seat-color rings and scoreboard labels identify teammates.
 
 - Fire deals 3 impact damage (6 on a critical hit), without burn.
-- Electric deals 1 base damage per hit and casts twice as fast. Each bolt hits up to projectile count + 1 enemies in total, at full bolt damage per link; chain hops stay within 3 units and respect walls.
+- Electric deals 1 base damage on the initial hit and attacks at 40% of its previous rate (0.8× the common wizard cast rate). Each bolt hits up to projectile count + 1 enemies in total; each jump retains 70% of the previous damage: 1, 0.7, 0.49, 0.343. Chain hops stay within 3 units and respect walls.
 - Ice slows enemy movement, including dashes, by 45% for 2 seconds and pierces one enemy by default, allowing each projectile to hit two enemies. Permanent piercing upgrades add to this class bonus; the temporary Piercing pickup retains its full-arena piercing allowance.
 - Grass deals 2 impact damage (4 on a critical hit) and applies poison for 3 seconds, crediting its caster. Six half-second ticks ramp through 1, 1, 2, 2, 3, 3 damage. Damage upgrades scale impact and poison; critical hits only increase impact. Repeated hits refresh the duration without resetting the ramp or postponing the next tick.
 
@@ -156,7 +156,7 @@ Ice projectiles pierce one enemy by default and stop on their second enemy hit. 
 Temporary and permanent buff circles are reduced from 44 to 32 pixels. Upgrades stay in a compact group at the upper left; the player leaderboard is a single column at the upper right in portrait and landscape. Wave and pickup announcements sit higher, with a separate landscape placement, and floating damage numbers begin above wizard hats. The gameplay camera shows 20% more world width and height than the previous view; the menu camera is unchanged. UI 18 remains compatible with protocol-17 rooms. Reload each phone to load the updated presentation.
 
 
-## Electric chain scaling (UI and protocol 19)
+## Electric chain scaling (historical UI and protocol 19; updated in 21)
 Electric deals 1 base impact damage (2 on a critical) and both charges and repeats twice as fast. Damage upgrades and power pickups multiply this base; rapid-cast pickups stack with the class speed bonus.
 
 Each bolt can hit a total of projectile count + 1 enemies: one projectile hits up to two enemies, two projectiles up to three, and six projectiles up to seven. The initial hit counts toward that total. Every chain link uses the full projectile damage. The projectile count is captured when the volley is cast, including permanent multishot and temporary extra projectiles, so a pickup expiring in flight cannot alter an existing bolt. Existing hop range, walls, unique targets and player knockback rules remain active.
@@ -175,3 +175,16 @@ The main menu, join screen and lobby show **v20 · Updated 17 Oct 2026** in smal
 Open **Connection details → Test connection** on both phones if joining stalls. The report shows whether public and relay candidates were discovered. A successful relay probe means this phone obtained a relay candidate; it does not prove the other phone is reachable. Once gameplay connects, the report shows whether the selected path is direct or relayed. **Copy report** includes the build, connection stage and route counts without IP addresses, SDP or private reconnect credentials. Keep both tabs open. Mobile carriers or Wi-Fi networks that block these public relay services can still prevent a connection.
 
 JavaScript checks cover route configuration in both layers, candidate gathering deadlines and cancellation, selected-path reporting, sanitized diagnostics, 2/3/4-player readiness, an unfinished extra pairing, four-player matching and authenticated reconnection. The existing combat and graphics modules are retained. This execution environment has no working terminal or phone browser, so the complete Node/Three.js suite and real cellular connectivity were not run here.
+
+## Lightning balance, shorter shields and healing hearts (version 21, 17 October 2026)
+Electric attack frequency is reduced by 60% from version 20. Its previous 2× class cast-rate multiplier is now 0.8×; charging and repeat cooldown both use the new rate, including guest prediction. Rapid Cast and permanent cast-speed upgrades still multiply that rate. Projectile speed is unchanged.
+
+Each lightning chain jump now deals 70% of the previous hit: an unmodified bolt deals 1 on impact, then 0.7, 0.49, 0.343 and so on. Critical and upgraded initial damage use the same falloff. Fractional damage is preserved without a minimum-one floor; floating labels show up to two decimals and use <0.01 for very small positive hits. Projectile-count-plus-one target limits, wall checks and unique targets are retained.
+
+Shield pickups now last 4.5 combat seconds, half the previous 9. Other temporary buffs remain 9 seconds. Countdown rings and pickup announcements use the correct duration for each buff.
+
+Defeated enemies have a 15% chance to drop a pink heart at their final position, including poison and chain kills. Walk over a heart to recover up to 20 HP, capped by upgraded maximum health. Full-health players leave it for someone who needs healing; fallen and inactive players cannot collect. The host resolves collection once and shares actual healing, pickup feedback and health with every guest. Hearts have a distinct heart icon, pink glow and radar mark, green +HP feedback, and a short pickup announcement.
+
+Hearts last 15 combat seconds and freeze while paused or choosing upgrades. Up to six hearts can coexist with the existing six buff pickups; regular buff spawn timing is unchanged. Rendering uses a fixed 12-item pool and snapshots remain bounded.
+
+JavaScript simulation checks cover exact chain falloff, upgraded/critical damage, slower authoritative and predicted casting, shield expiry, heart drop/no-drop paths, poison kills, healing caps and single collection, expiry, independent pickup caps, dense packets, guest snapshots and the retained 2–4-player/reconnection flow. Mocked visual checks cover fractional/healing labels and pooled heart icons. This session has no working terminal, GPU or phone browser, so the complete Node/Three.js suite and real-device appearance were not run here. Reload every phone and create a new room showing version 21.
