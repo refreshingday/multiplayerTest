@@ -1,5 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
-import {FireFX,FeedbackGate} from '../fire-fx-v19.js';import {createGame} from '../game-core-v19.js';
+import {FireFX,FeedbackGate,damageLabel} from '../fire-fx-v21.js';import {createGame,LIMITS,UPGRADES} from '../game-core-v21.js';
+import {ArenaFX} from '../arena-fx-v21.js';import {ICONS} from '../buff-icons-v21.js';
+globalThis.Path2D??=class{};
 const context=new Proxy({createRadialGradient:()=>({addColorStop(){}})},{get:(o,k)=>o[k]??(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>context})};
 const make=()=>{const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(40,1,.1,100);camera.position.set(0,26,18);camera.lookAt(0,0,0);return {scene,fx:new FireFX(THREE,scene,camera)}};
@@ -14,3 +16,22 @@ test('enemy shots remain red fire forms after occupying a previous elemental slo
 test('effect geometry and material allocations stay bounded during dense four-player combat',()=>{const {fx,scene}=make(),s=state();let baseline;const elements=['fire','electric','ice','grass'];for(let frame=0;frame<900;frame++){s.time=frame/60;s.bullets=Array.from({length:32},(_,id)=>({...shot(elements[(id+Math.floor(frame/20))%4],id,id%4),x:id%8-4,z:Math.floor(id/8)-2}));s.enemyShots=Array.from({length:12},(_,id)=>({...shot(null,id,-1),x:id%4,z:1}));s.players.forEach((p,i)=>{p.hero=elements[i];p.charging=frame%30<18;p.charge=(frame%18)/60;});fx.update(s,1/60,frame%4,true);if(frame===119)baseline=resources(scene);}assert.deepEqual(resources(scene),baseline);assert.equal(fx.orbs.length,56);assert.equal(fx.parts.length,384);assert.ok(fx.trails.size<=56);scene.traverse(o=>{if(o.geometry)for(const x of o.geometry.attributes.position.array)assert.ok(Number.isFinite(x));});});
 test('reset hides all projectiles, statuses, arcs, particles and predicted casts',()=>{const {fx}=make(),s=state();s.bullets=[shot('electric'),shot('grass',2)];s.events=[{id:1,t:0,type:'lightning',x:0,z:0,tx:2,tz:1}];fx.update(s,.05,0,true);fx.reset();assert.ok(fx.orbs.every(o=>!o.visible));assert.ok(fx.charges.every(o=>!o.visible));assert.ok(fx.parts.every(p=>p.life===0));assert.ok(fx.arcs.every(a=>!a.line.visible));assert.equal(fx.ghosts.size,0);assert.equal(fx.trails.size,0);});
 test('reduced motion suppresses projectile spin and lightning flicker',()=>{const {fx}=make();fx.reduced=true;const orb=fx.orbs[0];fx.styleOrb(orb,'ice');fx.animateOrb(orb,1);assert.equal(orb.userData.ice.rotation.z,0);fx.styleOrb(orb,'electric');fx.animateOrb(orb,1);assert.equal(orb.userData.electric.rotation.y,0);assert.ok(orb.userData.forks.every(f=>f.visible));});
+
+test('fractional chain damage remains visible, and healing numbers use a plus sign',()=>{
+ assert.deepEqual([1,.7,.49,.343,.002].map(damageLabel),['1','0.7','0.49','0.34','<0.01']);
+ const labels=[],n={sprite:{material:{}}},fx={numbers:[n],numberCursor:0,getNumberTexture:label=>{labels.push(label);return{};}};
+ FireFX.prototype.number.call(fx,{type:'hit',damage:.49,x:0,z:0,kind:'chain'});
+ FireFX.prototype.number.call(fx,{type:'pickup',heal:20,x:0,z:0});
+ assert.deepEqual(labels,['0.49','+20']);
+});
+test('hearts have a distinct icon and stay within the shared pickup render pool',()=>{
+ const scene=new THREE.Scene(),fx=new ArenaFX(THREE,scene),s=state(),keys=[...UPGRADES.map(u=>u.key),'heart'];
+ assert.ok(ICONS.heart);assert.equal(fx.items.length,LIMITS.pickups);
+ let baseline;
+ for(let frame=0;frame<120;frame++){
+  s.time=frame/60;s.pickups=Array.from({length:LIMITS.pickups},(_,i)=>({id:i,key:keys[(i+frame)%keys.length],x:i-6,z:0,ttl:10}));fx.update(s);
+  for(let i=0;i<s.pickups.length;i++)if(s.pickups[i].key==='heart'){assert.ok(fx.items[i].visible);assert.equal(fx.items[i].userData.core.visible,false);assert.equal(fx.items[i].userData.label.position.y,.75);}
+  if(frame===20)baseline=resources(scene);
+ }assert.deepEqual(resources(scene),baseline);
+ s.pickups=[];fx.update(s);assert.ok(fx.items.every(g=>!g.visible));
+});
