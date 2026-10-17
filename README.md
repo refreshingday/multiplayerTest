@@ -1,6 +1,6 @@
 # Neon Outpost
 
-Free 3D top-down cooperative robot arena for up to four phones on the same Wi-Fi.
+Free 3D top-down cooperative wizard arena for 2–4 phones, with Wi-Fi and mobile-data connection routes.
 
 Play: https://refreshingday.github.io/multiplayerTest/
 
@@ -9,9 +9,9 @@ Puff River (fart-powered rafting for up to four players): https://refreshingday.
 ## Joining
 - Host taps **Host a game**, then shares the six-digit room code or the room link.
 - Friend taps **Join a friend** and enters the six digits. A room link joins automatically.
-- Everyone taps **Ready**.
+- Start with **2, 3 or 4 connected players**. Everyone connected taps **Ready**; empty seats and unfinished extra connections do not block the group.
 
-Room matching uses the free public PeerJS Cloud signaling service; internet access is needed while joining. It automatically exchanges connection information. Gameplay then uses the existing direct WebRTC connection with reliable controls and a separate unordered channel for updates. Pairing data channels close after a direct gameplay link opens; the small PeerJS cloud connection remains available in the background so returning players can reconnect automatically. No STUN or TURN is used; Wi-Fi must allow direct device communication. Public matching service availability is outside this project's control.
+Room matching uses the free public PeerJS Cloud signaling service; internet access is needed while joining. It automatically exchanges connection information. Gameplay uses WebRTC data channels with reliable controls and a separate unordered channel for updates. It prefers a direct path; a public TURN relay can forward encrypted packets when direct mobile-network connections fail. Pairing data channels close after a direct gameplay link opens; the small PeerJS cloud connection remains available in the background so returning players can reconnect automatically. Both matching and gameplay use shared STUN/TURN settings based on PeerJS 1.5.5's published defaults. Public matching and relay service availability are outside this project's control; these services offer no project-specific uptime guarantee. Wi-Fi is usually the lowest-latency option.
 
 **Manual pairing** remains available in the menu if matching is unavailable. It exchanges the full invite and reply without a signaling service.
 
@@ -131,7 +131,7 @@ Brief direct-link interruptions no longer remove the player or reset the game. T
 
 The host retains player identity, wizard, position, health, score, kills, damage, permanent upgrades, temporary buff timers, enemies, wave progress and any pending upgrade offers. A fresh synchronization barrier clears stale movement history; the host waits for every active guest to acknowledge the authoritative snapshot before automatically resuming a game that was running. Manually paused games stay paused. A manual pause during recovery cancels automatic resume. Each guest recovers independently, and the squad waits until all active members have synced. Late messages from replaced links are ignored.
 
-A small signaling connection now stays available throughout room play and reconnects in the background if it drops. Gameplay remains direct WebRTC; no gameplay server or relay is added. Same-Wi-Fi support remains the current reliable connection mode; this does not add STUN/TURN support for mobile-data networks. Signaling internet access is needed to rebuild a failed direct connection. Keep the host and guest game tabs open. Closing/reloading the host ends the session; automatic recovery does not migrate the host or restore a closed tab. Manual invite/reply mode retains its existing behavior and needs fresh codes if its direct connection fully closes.
+A small signaling connection now stays available throughout room play and reconnects in the background if it drops. Gameplay remains WebRTC with host authority; no gameplay simulation server is added. This historical protocol-15 release only supported direct Wi-Fi paths; protocol 20 below adds shared internet and relay routes. Signaling internet access is needed to rebuild a failed direct connection. Keep the host and guest game tabs open. Closing/reloading the host ends the session; automatic recovery does not migrate the host or restore a closed tab. Manual invite/reply mode retains its existing behavior and needs fresh codes if its direct connection fully closes.
 
 Explicitly leaving removes a connected guest immediately. Ending the host room notifies connected guests. If recovery cannot succeed within two minutes, the reserved seat is released and the remaining group can Ready to continue. Guests see a reconnecting screen while the arena is paused.
 
@@ -164,3 +164,14 @@ Each bolt can hit a total of projectile count + 1 enemies: one projectile hits u
 Guest casting and smoothing use the same new cast rate. The Fire impact-only attack, ramping Poison, Ice innate piercing, distinct elemental effects, smaller buff icons, scoreboard layout, wider camera and two-minute automatic reconnect behavior are carried forward from the current game.
 
 Combat and module-wiring checks cover chain totals, full per-link damage, cast-time upgrades, damage/critical scaling, doubled cadence, local prediction, walls and inactive targets, alongside existing poison, ice, wave and multiplayer regressions. These were evaluated in JavaScript; this session has no terminal to run the complete Node/Three.js suite. Existing graphics code is retained with updated module imports. Reload all phones and create a fresh protocol-19 room.
+
+## Mobile-data joining and lobby fixes (version 20, 17 October 2026)
+The former explicit empty ICE-server list disabled STUN and TURN in both the PeerJS matching data connection and the custom gameplay connection. Both now share a fresh configuration with Google STUN and the public EU/US TURN endpoints published in [PeerJS 1.5.5's source](https://github.com/peers/peerjs/blob/v1.5.5/lib/util.ts), including TCP TURN alternatives. The published PeerJS username/password are public service defaults, not a private API key. No paid account is configured. Public service availability and actual carrier compatibility still need phone testing.
+
+Non-trickle invite/reply gathering now has bounded settling periods for public and relay candidates, rather than waiting indefinitely for every server to answer. Direct channels retain reliable controls, unordered updates, backpressure, authenticated room recovery and the two-minute seat reservation.
+
+The main menu, join screen and lobby show **v20 · Updated 17 Oct 2026** in small text. Reload every phone and create a new room: matching and gameplay messages isolate protocol 20 from older builds. A room starts with 2–4 fully connected players once all connected players tap Ready. A still-pairing additional phone no longer blocks an already connected pair; starting closes unfinished pairings and locks new admission.
+
+Open **Connection details → Test connection** on both phones if joining stalls. The report shows whether public and relay candidates were discovered. A successful relay probe means this phone obtained a relay candidate; it does not prove the other phone is reachable. Once gameplay connects, the report shows whether the selected path is direct or relayed. **Copy report** includes the build, connection stage and route counts without IP addresses, SDP or private reconnect credentials. Keep both tabs open. Mobile carriers or Wi-Fi networks that block these public relay services can still prevent a connection.
+
+JavaScript checks cover route configuration in both layers, candidate gathering deadlines and cancellation, selected-path reporting, sanitized diagnostics, 2/3/4-player readiness, an unfinished extra pairing, four-player matching and authenticated reconnection. The existing combat and graphics modules are retained. This execution environment has no working terminal or phone browser, so the complete Node/Three.js suite and real cellular connectivity were not run here.
