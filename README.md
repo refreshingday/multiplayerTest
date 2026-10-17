@@ -29,7 +29,7 @@ PeerJS documentation: https://peerjs.com/client/faq
 
 Source, prediction, session sequencing and mocked pairing checks are run before publishing. Actual phone rendering, public-service pairing and Wi-Fi latency still require device testing.
 
-The current page loads app-v18.js, room-v17.js, peer-v17.js, game-core-v17.js, prediction-v17.js, fire-fx-v18.js, arena-fx-v17.js, wizard-models-v17.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v18.css. Reload every phone and start a new room after updating.
+The current page loads app-v19.js, room-v19.js, peer-v19.js, game-core-v19.js, prediction-v19.js, fire-fx-v19.js, arena-fx-v19.js, wizard-models-v19.js, enemy-models-v12.js, wave-map-v11.js, buff-icons-v14.js and mobile-v18.css. Reload every phone and start a new room after updating.
 
 ## Pause timing fix
 A regression reproduced an unwanted Ready popup after about 30 seconds when the host had repeated brief rendering hitches: discarded simulation time accumulated unacknowledged guest inputs. The host now retains elapsed time and catches up in bounded batches. Brief visible frame hitches and focus changes do not force a pause; focus loss clears held controls. Hidden tabs, manual pauses, sustained update loss, or a visible freeze longer than two seconds still stop play safely. Stale remote firing stops within a quarter second. The input history tolerates up to two seconds and remains below the transport packet size limit. Regression checks compare the old failure with the fixed clock using the original buffer size, plus multi-minute simulations and pause/resume safeguards.
@@ -109,7 +109,7 @@ Enemy totals per wave are reduced by 20% from the previous release, rounded to w
 Choose a wizard on the menu or in the lobby before Ready. Choices are remembered locally, synchronized by the host, locked for the run, and retained across restarts. Multiple players may choose the same wizard; seat-color rings and scoreboard labels identify teammates.
 
 - Fire deals 3 impact damage (6 on a critical hit), without burn.
-- Electric chains half the direct-hit damage to up to two nearby enemies within 3 units, respecting walls.
+- Electric deals 1 base damage per hit and casts twice as fast. Each bolt hits up to projectile count + 1 enemies in total, at full bolt damage per link; chain hops stay within 3 units and respect walls.
 - Ice slows enemy movement, including dashes, by 45% for 2 seconds and pierces one enemy by default, allowing each projectile to hit two enemies. Permanent piercing upgrades add to this class bonus; the temporary Piercing pickup retains its full-arena piercing allowance.
 - Grass deals 2 impact damage (4 on a critical hit) and applies poison for 3 seconds, crediting its caster. Six half-second ticks ramp through 1, 1, 2, 2, 3, 3 damage. Damage upgrades scale impact and poison; critical hits only increase impact. Repeated hits refresh the duration without resetting the ramp or postponing the next tick.
 
@@ -141,7 +141,7 @@ Recovery snapshots support bounded messages up to 64 KiB, including dense 72-ene
 ## Elemental combat update (protocol 16)
 Fire now deals impact damage only. Poison has a 2-damage base impact and grows more painful over time, as detailed above. Electric projectiles are extruded jagged lightning bolts with flickering branches; ice uses a crystal spear with trailing fins; poison uses a pulsing glob with orbiting bubbles and separate droplet tails. Charging, trails, impacts, and predicted guest casts use the corresponding elemental forms and particle shapes. Shared effect pools reuse geometry and materials.
 
-Run `npm ci` and `npm test` for the 28 Node checks. These cover damage and poison timing, refresh and expiry, upgrade scaling and attribution, ice and lightning behavior, friendly knockback, four-player prediction, dense snapshots, wave progression, actual Three.js geometry and effect-pool reuse, and version-17 wiring. Rendering checks use Three.js without a GPU; phone appearance, shader compilation, sound, touch, and real four-device networking still require device testing.
+Run `npm ci` and `npm test` for the automated Node checks. These cover damage and poison timing, refresh and expiry, upgrade scaling and attribution, ice and lightning behavior, friendly knockback, four-player prediction, dense snapshots, wave progression, actual Three.js geometry and effect-pool reuse, and version-17 wiring. Rendering checks use Three.js without a GPU; phone appearance, shader compilation, sound, touch, and real four-device networking still require device testing.
 
 Reload every phone and create a fresh room. Protocol 16 rooms are isolated from older versions; two-minute automatic reconnection remains available.
 
@@ -152,3 +152,13 @@ Ice projectiles pierce one enemy by default and stop on their second enemy hit. 
 
 ## Clearer combat view (current: UI 18, protocol 17)
 Temporary and permanent buff circles are reduced from 44 to 32 pixels. Upgrades stay in a compact group at the upper left; the player leaderboard is a single column at the upper right in portrait and landscape. Wave and pickup announcements sit higher, with a separate landscape placement, and floating damage numbers begin above wizard hats. The gameplay camera shows 20% more world width and height than the previous view; the menu camera is unchanged. UI 18 remains compatible with protocol-17 rooms. Reload each phone to load the updated presentation.
+
+
+## Electric chain scaling (UI and protocol 19)
+Electric deals 1 base impact damage (2 on a critical) and both charges and repeats twice as fast. Damage upgrades and power pickups multiply this base; rapid-cast pickups stack with the class speed bonus.
+
+Each bolt can hit a total of projectile count + 1 enemies: one projectile hits up to two enemies, two projectiles up to three, and six projectiles up to seven. The initial hit counts toward that total. Every chain link uses the full projectile damage. The projectile count is captured when the volley is cast, including permanent multishot and temporary extra projectiles, so a pickup expiring in flight cannot alter an existing bolt. Existing hop range, walls, unique targets and player knockback rules remain active.
+
+Guest casting and smoothing use the same new cast rate. The Fire impact-only attack, ramping Poison, Ice innate piercing, distinct elemental effects, smaller buff icons, scoreboard layout, wider camera and two-minute automatic reconnect behavior are carried forward from the current game.
+
+Combat and module-wiring checks cover chain totals, full per-link damage, cast-time upgrades, damage/critical scaling, doubled cadence, local prediction, walls and inactive targets, alongside existing poison, ice, wave and multiplayer regressions. These were evaluated in JavaScript; this session has no terminal to run the complete Node/Three.js suite. Existing graphics code is retained with updated module imports. Reload all phones and create a fresh protocol-19 room.
