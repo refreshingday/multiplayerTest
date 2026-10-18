@@ -188,3 +188,14 @@ Defeated enemies have a 15% chance to drop a pink heart at their final position,
 Hearts last 15 combat seconds and freeze while paused or choosing upgrades. Up to six hearts can coexist with the existing six buff pickups; regular buff spawn timing is unchanged. Rendering uses a fixed 12-item pool and snapshots remain bounded.
 
 JavaScript simulation checks cover exact chain falloff, upgraded/critical damage, slower authoritative and predicted casting, shield expiry, heart drop/no-drop paths, poison kills, healing caps and single collection, expiry, independent pickup caps, dense packets, guest snapshots and the retained 2–4-player/reconnection flow. Mocked visual checks cover fractional/healing labels and pooled heart icons. This session has no working terminal, GPU or phone browser, so the complete Node/Three.js suite and real-device appearance were not run here. Reload every phone and create a new room showing version 21.
+
+## Expanding arena (version 22, 18 October 2026)
+Wave 1 is 1.5 times the original width and length: **36 × 27 world units**. Every subsequent wave multiplies both dimensions by 1.2: wave 2 is 43.2 × 32.4 and wave 3 is 51.84 × 38.88. The shared formula is 1.5 × 1.2^(wave − 1), applied to the original 24 × 18 arena. Starting a new run resets the arena to the larger wave-1 size.
+
+The simulation and guests derive the same bounds from the authoritative wave number. Player and enemy movement, friendly knockback, impact displacement, projectile cleanup, enemy entrances, random buff positions, obstacle placement and wave-clear position clamping all use those bounds. Four-player snapshots validate obstacles in the larger arena, and predicted movement, reconciliation replay and displayed positions use the current wave's limits.
+
+The ground and perimeter expand using their existing meshes. Cached floor textures repeat across the added space to retain their world-space tile size. The camera follows the local player across the expanded arena while retaining the existing combat zoom. The minimap fits the entire current map and keeps player, enemy and pickup markers legible. Wave introductions show the current map-size multiplier.
+
+Checks cover the scale formula, real four-player upgrade transitions and reset, movement/prediction/replay at new boundaries, generated obstacle clearance, expanded spawn areas, projectile bounds, knockback, outer-edge positions at wave completion, larger snapshots in all guests, camera/radar behavior and pooled floor/perimeter rendering through later waves. Existing combat, elemental tuning, hearts, shorter shields, 2–4-player readiness and authenticated recovery checks pass in JavaScript simulation. Rendering verification used mocked Three.js objects; the complete Node/Three.js suite and real-phone GPU rendering could not run in this environment.
+
+Reload every phone and create a fresh room showing **v22 · Updated 18 Oct 2026**.
