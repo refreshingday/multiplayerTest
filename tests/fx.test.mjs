@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
-import {FireFX,FeedbackGate,damageLabel} from '../fire-fx-v21.js';import {createGame,LIMITS,UPGRADES} from '../game-core-v21.js';
-import {ArenaFX} from '../arena-fx-v21.js';import {ICONS} from '../buff-icons-v21.js';
+import {FireFX,FeedbackGate,damageLabel} from '../fire-fx-v22.js';import {createGame,LIMITS,UPGRADES} from '../game-core-v22.js';
+import {ArenaFX} from '../arena-fx-v22.js';import {ICONS} from '../buff-icons-v22.js';
 globalThis.Path2D??=class{};
 const context=new Proxy({createRadialGradient:()=>({addColorStop(){}})},{get:(o,k)=>o[k]??(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>context})};
