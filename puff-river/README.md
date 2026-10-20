@@ -9,7 +9,7 @@ A bright 3D rafting game for one to four captains. Soft, rounded human stick fig
 - Friends choose **Join a raft** or open the invite link. Everyone taps **Ready to float**.
 - Each actual crew gets equal territories: 360°, 180°, 120°, or 90°. Captains cannot cross into another seat’s territory.
 - Drag the joystick toward your part of the edge. Hold the round puff button (or Space) to fart outward. A/D or Left/Right also move around the edge.
-- Each captain has independent puff power. Release to regenerate. Collected beans restore 30 power to every active captain.
+- Each captain has independent puff power. Release to regenerate. Holding the puff button on an empty tank produces no thrust or gas and does not recharge it. Collected beans restore 30 power to every active captain.
 - All captains share the raft, its three hearts, beans and the 800 m finish. Rocks, logs, whirlpools, banks and marked rapids remain active.
 
 Open the same game URL on each phone, on the **same Wi-Fi**. Pairing uses the free public PeerJS signaling service and requires internet access; gameplay uses direct WebRTC data channels. As in Neon Outpost, this version has no STUN or TURN relay, so guest Wi-Fi/client isolation or separate mobile networks can prevent a connection. Three.js and PeerJS are vendored with MIT notices.
@@ -33,3 +33,5 @@ The tests cover equal territories, recoil, tilt, deterministic bends, accurate v
 The game fills the viewport and keeps the raft centered through frequent broad river bends. All HUD and crew information stays at the top. Only the joystick and circular fart button appear at the bottom. The face-down pose, submerged legs, outward gas jets, safe shoreline geometry and damped board roll are preserved from the solo game.
 
 Play: https://refreshingday.github.io/multiplayerTest/puff-river/
+
+Version 1.0.2 fixes empty-tank puffing in solo, host simulation and guest prediction. Reload every phone and create a fresh protocol-2 room.

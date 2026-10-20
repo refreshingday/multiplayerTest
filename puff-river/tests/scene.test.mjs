@@ -53,3 +53,11 @@ test('all four fart emitters create outward jets and effect objects stay bounded
  assert.ok(context.window.puffRiver.getPuffs().length>0);
  app.leaveOnline();app.frame(now+17);assert.equal(app.captains.filter(c=>c.pip.visible).length,1);assert.equal(node('room-panel').hidden,true);assert.equal(node('crew-menu').hidden,true);
 });
+test('holding empty puff power creates no gas or active button and releasing restores usable power',()=>{
+ app.start();app.scenario({fuel:0});app.input.boost=true;let now=performance.now()+5000;
+ for(let i=0;i<90;i++){now+=1000/60;app.frame(now);}
+ assert.equal(app.getState().fuel,0);assert.equal(app.getState().boosting,false);assert.equal(context.window.puffRiver.getPuffs().length,0);
+ assert.equal(node('fuel-value').textContent,'0%');assert.equal(node('fart-button').classList.contains('active'),false);assert.equal(node('fart-button').classList.contains('empty'),true);
+ app.input.boost=false;for(let i=0;i<60;i++){now+=1000/60;app.frame(now);}assert.ok(app.getState().fuel>10);
+ app.input.boost=true;app.frame(now+17);assert.equal(app.getState().boosting,true);assert.ok(context.window.puffRiver.getPuffs().length>0);
+});

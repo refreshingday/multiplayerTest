@@ -24,6 +24,11 @@ export function createState(playerCount=1,playerIndex=0){
 export function normalizeInput(input={}){
  return {left:input?.left===true,right:input?.right===true,boost:input?.boost===true,aimAngle:Number.isFinite(input?.aimAngle)?Math.atan2(Math.sin(input.aimAngle),Math.cos(input.aimAngle)):null};
 }
+export function stepPuffPower(p,held,dt){
+ // Holding an empty tank must never regenerate tiny, immediately usable bursts.
+ if(!held){p.boosting=false;p.fuel=Math.min(100,p.fuel+14*dt);return;}
+ const remaining=p.fuel-25*dt;p.fuel=remaining>1e-8?remaining:0;p.boosting=p.fuel>0;
+}
 export function stepCaptain(p,input,dt,count=1,index=0){
  input=normalizeInput(input);const area=territory(count,index);
  let next=p.angle+((input.right?1:0)-(input.left?1:0))*1.8*dt;
@@ -33,8 +38,7 @@ export function stepCaptain(p,input,dt,count=1,index=0){
   next=p.angle+Math.max(-1.8*dt,Math.min(1.8*dt,delta));
  }
  p.angle=area.unrestricted?((next+Math.PI)%TAU+TAU)%TAU-Math.PI:Math.max(area.min,Math.min(area.max,next));
- p.boosting=input.boost&&p.fuel>2;
- p.fuel=Math.max(0,Math.min(100,p.fuel+(p.boosting?-25:14)*dt));
+ stepPuffPower(p,input.boost,dt);
 }
 export function step(s,input,dt,externalPlayers=[]){
  if(s.phase!=='playing')return;

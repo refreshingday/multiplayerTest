@@ -48,7 +48,7 @@ test('per-captain puff power drains independently and opposite puffs cancel stee
 });
 test('pause freezes world and fuel, requires every visible captain, and rejects stale input epochs',()=>{
  const net=network();net.ready();net.advance(.4);net.clients[2].action('pause');net.flush();assert.ok(net.clients.every(c=>c.state.phase==='paused'));const host=net.clients[0],before=structuredClone(host.state);net.advance(.6,{1:{boost:true,right:true}});assert.equal(host.state.distance,before.distance);assert.deepEqual(host.state.players.map(p=>p.fuel),before.players.map(p=>p.fuel));
- const oldEpoch=host.epoch;net.ready();assert.equal(host.state.phase,'playing');host.receive({t:'input',v:1,epoch:oldEpoch,visible:true,frames:[{n:1,input:{boost:true}}]},1);assert.equal(host.remotes.get(1).frames.size,0);
+ const oldEpoch=host.epoch;net.ready();assert.equal(host.state.phase,'playing');host.receive({t:'input',v:PROTOCOL,epoch:oldEpoch,visible:true,frames:[{n:1,input:{boost:true}}]},1);assert.equal(host.remotes.get(1).frames.size,0);
  net.clients[1].visibility(false);net.flush();assert.equal(host.state.phase,'paused');net.ready();assert.equal(host.state.phase,'paused');net.clients[1].visibility(true);net.flush();net.clients[1].action('ready');net.flush();assert.equal(host.state.phase,'playing');
 });
 test('a disconnected captain resumes in the same seat with fuel and progress preserved',()=>{
@@ -73,12 +73,23 @@ test('remote frame queues and snapshots are bounded and malformed input cannot e
 });
 test('stale snapshots and mismatched protocols cannot replace a guest world',()=>{
  const net=network();net.ready();const guest=net.clients[1],saved=structuredClone(guest.state),q=guest.lastQ;
- guest.receive({t:'state',v:999,epoch:guest.epoch,q:q+100,you:1,s:saved},0);guest.receive({t:'state',v:1,epoch:guest.epoch,q:q-1,you:1,s:{...saved,distance:300}},0);guest.receive({t:'state',v:1,epoch:guest.epoch,q:q+100,you:1,s:{...saved,distance:300}},2);assert.deepEqual(guest.state,saved);
+ guest.receive({t:'state',v:999,epoch:guest.epoch,q:q+100,you:1,s:saved},0);guest.receive({t:'state',v:PROTOCOL,epoch:guest.epoch,q:q-1,you:1,s:{...saved,distance:300}},0);guest.receive({t:'state',v:PROTOCOL,epoch:guest.epoch,q:q+100,you:1,s:{...saved,distance:300}},2);assert.deepEqual(guest.state,saved);
 });
 test('puffs still consume fuel between input packets and heartbeats cannot keep a stale puff active',()=>{
  const p=createCrew([0,1]).players[1],remote=new RemoteCaptain();remote.add([{n:1,input:{boost:true}}],0);remote.consume(p,2,0);const first=p.fuel;
  for(let tick=1;tick<12;tick++){remote.add([],tick*TICK*1000);remote.consume(p,2,tick*TICK*1000);}assert.ok(p.fuel<first-4);
  remote.add([],300);remote.consume(p,2,300);assert.equal(p.boosting,false);
+});
+test('all four players stop puffing at zero while held, including guest prediction and packet gaps',()=>{
+ const net=network();net.ready();net.clients[0].course=[];
+ const held={0:{boost:true},1:{boost:true},2:{boost:true},3:{boost:true}};
+ net.advance(7,held);
+ for(const p of net.clients[0].members){assert.equal(p.fuel,0);assert.equal(p.boosting,false);}
+ for(const guest of net.clients.slice(1)){assert.equal(guest.predicted.fuel,0);assert.equal(guest.predicted.boosting,false);}
+ net.advance(.6);for(const p of net.clients[0].members)assert.ok(p.fuel>5);
+ const before=net.clients[0].members.map(p=>p.fuel);net.advance(.1,held);net.clients[0].members.forEach((p,i)=>{assert.ok(p.fuel<before[i]);assert.equal(p.boosting,true);});
+ const p=createCrew([0,1]).players[1],remote=new RemoteCaptain();p.fuel=.1;
+ for(let tick=0;tick<30;tick++){const at=tick*TICK*1000;if(tick%3===0)remote.add([{n:remote.done+1,input:{boost:true}}],at);remote.consume(p,2,at);assert.equal(p.fuel,0);assert.equal(p.boosting,false);}
 });
 test('host hitches retain simulation time in bounded batches and long freezes pause the raft',()=>{
  const net=network();net.ready();const host=net.clients[0];host.course=[];const before=host.state.time;

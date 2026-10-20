@@ -1,9 +1,9 @@
-import {normalizeInput,stepCaptain,territory,COURSE_LENGTH} from './core.js?v=1.0.0';
-import {createCrew,stepVoyage,voyageCourse} from './crew-core.js';
-export const PROTOCOL=1,TICK=1/60,MAX_FRAMES=120;
+import {normalizeInput,stepCaptain,stepPuffPower,territory,COURSE_LENGTH} from './core.js?v=1.0.2';
+import {createCrew,stepVoyage,voyageCourse} from './crew-core.js?v=1.0.2';
+export const PROTOCOL=2,TICK=1/60,MAX_FRAMES=120;
 const copy=value=>structuredClone(value),empty=()=>normalizeInput();
 export class RemoteCaptain{
- constructor(now=0){this.done=0;this.frames=new Map();this.at=now;this.appliedAt=now;}
+ constructor(now=0){this.done=0;this.frames=new Map();this.at=now;this.appliedAt=now;this.held=false;}
  add(frames,now){
   if(!Array.isArray(frames)||frames.length>MAX_FRAMES)return false;
   for(const f of frames)if(f&&Number.isSafeInteger(f.n)&&f.n>this.done&&f.n<=this.done+MAX_FRAMES)this.frames.set(f.n,normalizeInput(f.input));
@@ -11,10 +11,10 @@ export class RemoteCaptain{
  }
  consume(p,count,now){
   const input=this.frames.get(this.done+1);
-  if(input){this.frames.delete(++this.done);this.appliedAt=now;stepCaptain(p,input,TICK,count,p.seat);}
+  if(input){this.frames.delete(++this.done);this.appliedAt=now;this.held=input.boost;stepCaptain(p,input,TICK,count,p.seat);}
   else{
-   if(now-this.appliedAt>250||p.fuel<=2)p.boosting=false;
-   p.fuel=Math.max(0,Math.min(100,p.fuel+(p.boosting?-25:14)*TICK));
+   if(now-this.appliedAt>250||now-this.at>250)this.held=false;
+   stepPuffPower(p,this.held,TICK);
   }
   if(now-this.at>250)p.boosting=false;
  }
