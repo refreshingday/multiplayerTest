@@ -25,7 +25,7 @@ after(()=>{for(const [key,value] of Object.entries(original))PeerLink.prototype[
 const settle=()=>new Promise(resolve=>setTimeout(resolve,12));
 test('real RoomLink creates one host and three authenticated direct guest links, then rejects a fifth player',async()=>{
  const joined=[],received=[],closed=[];const host=new RoomLink({onPeerJoin:id=>joined.push(id),onMessage:(m,id)=>received.push({m,id})}),guests=[];
- try{const code=await host.hostRoom();assert.match(code,/^\d{6}$/);assert.ok(host.session.peerId.startsWith('puff-river-v2-'));
+ try{const code=await host.hostRoom();assert.match(code,/^\d{6}$/);assert.ok(host.session.peerId.startsWith('puff-river-v3-'));
   for(let i=0;i<3;i++){const guest=new RoomLink({onClose:text=>closed.push(text)});guests.push(guest);await guest.joinRoom(code);await settle();}
   assert.deepEqual(joined,[1,2,3]);assert.deepEqual(guests.map(g=>g.localId),[1,2,3]);assert.ok(guests.every(g=>g.connected));
   for(let i=0;i<3;i++){const r=host.session.links.get(i+1);assert.match(r.token,/^[a-f0-9]{32}$/);assert.ok(r.connected);guests[i].send({t:'captain',id:99});}await settle();assert.deepEqual(received.map(r=>r.id),[1,2,3]);
@@ -38,7 +38,7 @@ test('leaving frees a lobby seat while a locked run rejects strangers and preser
   guests[0].close();await settle();assert.deepEqual(left,[1]);const replacement=new RoomLink();guests.push(replacement);await replacement.joinRoom(code);await settle();assert.equal(replacement.localId,1);
   host.lock();assert.equal(host.locked,true);const returning=guests[1],record=host.session.links.get(2),token=record.token;record.direct.callbacks.onInterrupted();returning.session.links.get(0).direct.callbacks.onInterrupted();
   assert.equal(record.recovering,true);assert.equal(record.deadline-Date.now()>110000,true);
-  const attacker=new FakePeer(),rejections=[];await settle();const bad=attacker.connect(host.session.peerId,{metadata:{game:'puff-river-room-v2',resume:{slot:2,token:'0'.repeat(32)}}});bad.on('data',m=>rejections.push(m));await settle();assert.ok(rejections.some(m=>m.type==='reject'));assert.equal(record.token,token);
+  const attacker=new FakePeer(),rejections=[];await settle();const bad=attacker.connect(host.session.peerId,{metadata:{game:'puff-river-room-v3',resume:{slot:2,token:'0'.repeat(32)}}});bad.on('data',m=>rejections.push(m));await settle();assert.ok(rejections.some(m=>m.type==='reject'));assert.equal(record.token,token);
   for(let i=0;i<12&&!returned.includes(2);i++)await settle();assert.ok(returned.includes(2));assert.equal(returning.localId,2);assert.equal(host.session.links.get(2).token,token);assert.ok(host.isConnected(2));
   const stranger=new RoomLink();guests.push(stranger);await stranger.joinRoom(code);await settle();assert.equal(stranger.connected,false);assert.equal(host.session.links.size,2);attacker.destroy();
  }finally{for(const g of guests)g.close();host.close();}

@@ -26,6 +26,10 @@ test('all guests predict their own captain immediately and reconcile acknowledge
  const guest=net.clients[1],before=guest.predicted.angle;net.tick({1:{left:true}},false);assert.ok(guest.predicted.angle<before,'prediction responds before a host snapshot arrives');
 });
 function hostPlayer(net,id){return net.clients[0].state.players.find(p=>p.id===id);}
+test('the shared raft stays still for every player when no captain farts',()=>{
+ const net=network();net.ready();net.advance(3);
+ for(const client of net.clients){assert.equal(client.state.distance,0);assert.equal(client.state.x,0);assert.equal(client.state.speed,0);assert.equal(client.state.phase,'playing');assert.ok(client.state.players.every(p=>p.fuel===100&&!p.boosting));}
+});
 test('unreliable input redundancy tolerates loss and reordering without changing seats or double-ticking',()=>{
  const net=network();net.ready();net.clients[0].course=[];
  for(let tick=0;tick<240;tick++){

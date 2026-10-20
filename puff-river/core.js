@@ -19,7 +19,7 @@ function angleDelta(from,to){return ((to-from+Math.PI)%TAU+TAU)%TAU-Math.PI;}
 export function rapidStrength(distance){for(const start of RAPIDS){const t=(distance-start)/12;if(t>=0&&t<=1)return Math.sin(t*Math.PI);}return 0;}
 export function createState(playerCount=1,playerIndex=0){
  const area=territory(playerCount,playerIndex);
- return {phase:'menu',playerCount:area.count,playerIndex:area.index,x:0,vx:0,distance:0,speed:4.3,angle:area.center,fuel:100,lives:3,beans:0,invincible:0,time:0,boosting:false,rollX:0,rollZ:0,rollVX:0,rollVZ:0,rapids:0};
+ return {phase:'menu',playerCount:area.count,playerIndex:area.index,x:0,vx:0,distance:0,speed:0,angle:area.center,fuel:100,lives:3,beans:0,invincible:0,time:0,boosting:false,rollX:0,rollZ:0,rollVX:0,rollVZ:0,rapids:0};
 }
 export function normalizeInput(input={}){
  return {left:input?.left===true,right:input?.right===true,boost:input?.boost===true,aimAngle:Number.isFinite(input?.aimAngle)?Math.atan2(Math.sin(input.aimAngle),Math.cos(input.aimAngle)):null};
@@ -53,7 +53,12 @@ export function step(s,input,dt,externalPlayers=[]){
  }
  const divisor=s.players?Math.max(1,captains.length):1;
  s.vx+=thrustX/divisor*13*dt;s.vx*=Math.exp(-1.5*dt);s.x+=s.vx*dt;
- s.speed=4.3-thrustZ/divisor*3.6;s.distance=Math.min(COURSE_LENGTH,s.distance+s.speed*dt);
+ // Still water supplies no free current. Puffs accelerate the board; drag settles it.
+ s.speed-=thrustZ/divisor*13*dt;s.speed*=Math.exp(-2.4*dt);
+ if(Math.abs(s.speed)<.025&&Math.abs(thrustZ)<1e-8)s.speed=0;
+ if(Math.abs(s.vx)<.025&&Math.abs(thrustX)<1e-8)s.vx=0;
+ s.distance=Math.max(0,Math.min(COURSE_LENGTH,s.distance+s.speed*dt));
+ if(s.distance===0&&s.speed<0)s.speed=0;
  s.rapids=rapidStrength(s.distance);
  const targetX=weightX/divisor+s.rapids*Math.sin(s.time*9)*.17;
  const targetZ=weightZ/divisor-s.vx*.012+s.rapids*Math.sin(s.time*7.5)*.21;

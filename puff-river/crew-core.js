@@ -1,4 +1,4 @@
-import {createState,territory,step,hit,makeCourse,riverPoint} from './core.js?v=1.0.2';
+import {createState,territory,step,hit,makeCourse,riverPoint} from './core.js?v=1.1.0';
 export const CAPTAINS=Object.freeze([
  {name:'Pip',color:'#b3dca5',scarf:'#a9c281'},
  {name:'Peach',color:'#f4b0a5',scarf:'#e39892'},

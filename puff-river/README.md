@@ -1,6 +1,6 @@
 # Puff River
 
-A bright 3D rafting game for one to four captains. Soft, rounded human stick figures lie face down over a round board, facing its center, with their lower bodies hanging into the water. Outward farts push the shared raft inward. Built with HTML, JavaScript and Three.js; no build step.
+A bright 3D rafting game for one to four captains. Soft, rounded human stick figures lie face down over a round board, facing its center, with their lower bodies hanging into the water. Outward farts push the shared raft inward. Calm water adds no automatic drift: the board starts still, coasts briefly after a puff, and settles when nobody farts. Built with HTML, JavaScript and Three.js; no build step.
 
 ## Solo or a crew
 
@@ -35,3 +35,5 @@ The game fills the viewport and keeps the raft centered through frequent broad r
 Play: https://refreshingday.github.io/multiplayerTest/puff-river/
 
 Version 1.0.2 fixes empty-tank puffing in solo, host simulation and guest prediction. Reload every phone and create a fresh protocol-2 room.
+
+Version 1.1.0 removes automatic current, adds puff-driven forward/reverse movement, and calms the water ripples and idle bobbing. Reload every phone and create a fresh protocol-3 room.
