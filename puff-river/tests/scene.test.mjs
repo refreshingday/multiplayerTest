@@ -24,7 +24,7 @@ vm.runInContext(source,context);const app=context.app;
 test('single-player joystick and circular fart button still control a full-circle captain',()=>{
  app.start();const event={pointerId:9,clientX:110,clientY:56,preventDefault(){}};node('joystick').dispatch('pointerdown',event);assert.ok(Number.isFinite(app.input.aimAngle));node('fart-button').dispatch('pointerdown',{...event,pointerId:10});assert.equal(app.input.boost,true);node('fart-button').dispatch('pointerup',{pointerId:10});assert.equal(app.input.boost,false);node('joystick').dispatch('pointercancel',{pointerId:9});assert.equal(app.input.aimAngle,null);
 });
-test('four distinct bears remain face down with submerged legs, rear emitters, and only the local aim marker',()=>{
+test('four rounded human captains remain face down with submerged legs, rear emitters, and only the local aim marker',()=>{
  for(const count of [2,3,4]){
   const s=createCrew(Array.from({length:count},(_,i)=>i));s.run=1;s.phase='paused';app.crew(s,count-1);app.frame(performance.now());app.scene.updateMatrixWorld(true);
   assert.equal(app.captains.filter(c=>c.pip.visible).length,count);

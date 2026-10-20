@@ -1,6 +1,6 @@
 # Puff River
 
-A bright 3D rafting game for one to four captains. Bears lie face down over a round board, facing its center, with their lower bodies hanging into the water. Outward farts push the shared raft inward. Built with HTML, JavaScript and Three.js; no build step.
+A bright 3D rafting game for one to four captains. Soft, rounded human stick figures lie face down over a round board, facing its center, with their lower bodies hanging into the water. Outward farts push the shared raft inward. Built with HTML, JavaScript and Three.js; no build step.
 
 ## Solo or a crew
 
@@ -26,10 +26,10 @@ Room codes use a Puff River-specific namespace, separate from Neon Outpost. The 
 
 `npm start` serves this directory on http://localhost:5173. Requires a WebGL-capable browser. `npm test` runs gameplay, multiplayer, pairing/reconnection and real Three.js scene checks with mocked GPU/browser/transport boundaries.
 
-The tests cover equal territories, recoil, tilt, deterministic bends, accurate visible shoreline contact, four independent clients, input loss/reordering, prediction, Ready/pause/restart consensus, shared collision and pickup authority, seat reuse, fifth-player rejection, simultaneous reconnects, invalid reconnect credentials, bounded packets, and the four bears’ poses and centered camera. Real four-phone Wi-Fi pairing, GPU rendering, audio and touch feel still require device testing.
+The tests cover equal territories, recoil, tilt, deterministic bends, accurate visible shoreline contact, four independent clients, input loss/reordering, prediction, Ready/pause/restart consensus, shared collision and pickup authority, seat reuse, fifth-player rejection, simultaneous reconnects, invalid reconnect credentials, bounded packets, and the four characters’ poses and centered camera. Real four-phone Wi-Fi pairing, GPU rendering, audio and touch feel still require device testing.
 
 ## Presentation
 
-The game fills the viewport and keeps the raft centered through frequent broad river bends. All HUD and crew information stays at the top. Only the joystick and circular fart button appear at the bottom. The bear pose, submerged legs, outward gas jets, safe shoreline geometry and damped board roll are preserved from the solo game.
+The game fills the viewport and keeps the raft centered through frequent broad river bends. All HUD and crew information stays at the top. Only the joystick and circular fart button appear at the bottom. The face-down pose, submerged legs, outward gas jets, safe shoreline geometry and damped board roll are preserved from the solo game.
 
 Play: https://refreshingday.github.io/multiplayerTest/puff-river/

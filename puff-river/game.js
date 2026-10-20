@@ -85,37 +85,36 @@ const pip=new THREE.Group();pip.name='pip';raft.add(pip);
 const waist=new THREE.Group();waist.name='waist';waist.position.set(0,.72,0);pip.add(waist);
 const upperBody=new THREE.Group();upperBody.name='prone-upper-body';upperBody.rotation.x=-Math.PI/2;waist.add(upperBody);
 const lowerBody=new THREE.Group();lowerBody.name='hanging-lower-body';waist.add(lowerBody);
-// Upper-body coordinates are upright anatomy, rotated exactly 90 degrees at the waist.
-sphere('#e9a587',0,.43,0,.43,.58,.36,upperBody);
-sphere('#f8ceb0',0,.43,-.28,.3,.4,.08,upperBody);
-sphere('#efb292',0,1.14,.03,.45,.39,.34,upperBody);
-for(const side of [-1,1]){
- sphere('#efb292',side*.32,1.43,.06,.17,.18,.12,upperBody);
- sphere('#d48d7c',side*.32,1.46,-.035,.09,.10,.035,upperBody);
- sphere('#3d4030',side*.20,1.23,-.272,.041,.047,.022,upperBody);
- sphere('#fff9e5',side*.19,1.246,-.29,.012,.014,.009,upperBody);
- sphere('#e68f80',side*.32,1.09,-.245,.07,.04,.022,upperBody);
- const arm=sphere('#ecad8d',side*.43,.74,-.12,.14,.34,.15,upperBody);arm.rotation.z=side*.32;
- sphere('#d99379',side*.49,.99,-.275,.18,.24,.115,upperBody);
+// Soft human stick figures: ball head, capsule torso and pill-shaped limbs.
+// Anatomy is built upright, then the upper body folds 90 degrees onto the board.
+const bodyColor=CAPTAINS[0].color,faceColor='#fff0d6';
+function softLimb(name,color,from,to,radius,parent){
+ const a=new THREE.Vector3(...from),b=new THREE.Vector3(...to),axis=b.clone().sub(a);
+ const part=mesh(new THREE.CapsuleGeometry(radius,axis.length(),6,16),color,parent);
+ part.name=name;part.position.copy(a).add(b).multiplyScalar(.5);
+ part.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),axis.normalize());return part;
 }
-sphere('#fbd4ad',0,1.06,-.265,.29,.19,.12,upperBody);
-sphere('#624c3b',0,1.11,-.388,.068,.043,.018,upperBody);
-const scarf=torus('#a9c281',.30,.065,upperBody);scarf.position.y=.83;
-const scarfEnd=box('#92af6a',-.16,.57,.35,.14,.35,.055,upperBody);scarfEnd.rotation.z=-.18;
-// A small tilted sunhat stays on the back of Pip's head.
-const hat=new THREE.Group();hat.position.set(0,1.46,.04);hat.rotation.z=-.15;upperBody.add(hat);
-cylinder('#d9e8aa',0,.06,0,.32,.34,.065,hat,32);
-cylinder('#d9e8aa',0,.17,0,.21,.25,.18,hat,24);
-sphere('#f4e6ab',.16,.22,-.13,.06,.055,.025,hat);
-// The hips sit outside the rope, so the hanging body does not pass through the board.
-sphere('#e9a587',0,-.20,.19,.37,.35,.28,lowerBody);
+const torso=softLimb('human-torso',bodyColor,[0,.24,0],[0,.62,0],.255,upperBody);
+torso.scale.z=1.35;
+softLimb('human-neck',faceColor,[0,.81,0],[0,.95,0],.125,upperBody);
+const head=sphere(faceColor,0,1.19,0,.365,.385,.355,upperBody,20);head.name='human-head';
 for(const side of [-1,1]){
- sphere('#efb292',side*.16,-.15,.37,.22,.27,.15,lowerBody);
- sphere('#e9a587',side*.19,-.74,.20,.20,.46,.22,lowerBody);
- sphere('#dfa084',side*.19,-1.36,.22,.16,.35,.18,lowerBody);
- sphere('#d99379',side*.19,-1.65,.28,.19,.13,.25,lowerBody);
+ const label=side<0?'left':'right';
+ softLimb(label+'-upper-arm',bodyColor,[side*.25,.70,-.055],[side*.48,.73,-.13],.115,upperBody);
+ softLimb(label+'-forearm',bodyColor,[side*.48,.73,-.13],[side*.51,1.03,-.20],.105,upperBody);
+ const hand=sphere(bodyColor,side*.51,1.10,-.20,.14,.17,.135,upperBody,16);hand.name=label+'-hand';
+ sphere('#34483f',side*.125,1.24,-.331,.035,.043,.022,upperBody,12);
+ sphere('#fffdf3',side*.117,1.252,-.35,.011,.013,.007,upperBody,10);
 }
-sphere('#e5a181',0,-.05,.49,.105,.105,.09,lowerBody);
+// Rounded hips and long, simple legs hang outside the rim without clipping it.
+const hips=sphere(bodyColor,0,-.16,.20,.28,.25,.245,lowerBody,18);hips.name='human-hips';
+for(const side of [-1,1]){
+ const label=side<0?'left':'right';
+ sphere(bodyColor,side*.145,-.17,.34,.175,.22,.17,lowerBody,16);
+ softLimb(label+'-thigh',bodyColor,[side*.18,-.28,.22],[side*.19,-.91,.24],.135,lowerBody);
+ softLimb(label+'-calf',bodyColor,[side*.19,-.91,.24],[side*.19,-1.57,.28],.115,lowerBody);
+ const foot=sphere(bodyColor,side*.19,-1.65,.30,.155,.12,.245,lowerBody,16);foot.name=label+'-foot';
+}
 const fartEmitter=new THREE.Object3D();fartEmitter.name='outward-fart-emitter';fartEmitter.position.set(0,-.18,.55);waist.add(fartEmitter);
 // Small surface rings make the submerged half easy to read without extra HUD.
 const bodyRipple=new THREE.Group();scene.add(bodyRipple);
@@ -123,10 +122,10 @@ for(let i=0;i<2;i++){const ring=torus('#c7edcd',.44+i*.20,.015,bodyRipple,Math.P
 const aim=new THREE.Group();raft.add(aim);for(let i=0;i<3;i++){const a=new THREE.Shape();a.moveTo(-.19,.1);a.lineTo(0,-.13);a.lineTo(.19,.1);a.lineTo(.19,.22);a.lineTo(0,-.01);a.lineTo(-.19,.22);const arrow=mesh(new THREE.ShapeGeometry(a),'#f2f4c2',aim);arrow.rotation.x=-Math.PI/2;arrow.position.set(0,.4,-1.45+i*.35);arrow.castShadow=false;}
 const captains=[{pip,upperBody,lowerBody,emitter:fartEmitter,ripple:bodyRipple,aim,puffTimer:0}];
 for(let id=1;id<4;id++){
- const bear=pip.clone(true);bear.name='captain-'+id;raft.add(bear);
- bear.traverse(m=>{if(!m.isMesh)return;if(m.material===mat('#a9c281')||m.material===mat('#92af6a'))m.material=mat(CAPTAINS[id].scarf);else if(m.material===mat('#d9e8aa'))m.material=mat(CAPTAINS[id].color);});
+ const person=pip.clone(true);person.name='captain-'+id;raft.add(person);
+ person.traverse(m=>{if(m.isMesh&&m.material===mat(bodyColor))m.material=mat(CAPTAINS[id].color);});
  const ripple=bodyRipple.clone(true);scene.add(ripple);const arrow=aim.clone(true);raft.add(arrow);
- captains.push({pip:bear,upperBody:bear.getObjectByName('prone-upper-body'),lowerBody:bear.getObjectByName('hanging-lower-body'),emitter:bear.getObjectByName('outward-fart-emitter'),ripple,aim:arrow,puffTimer:0});bear.visible=ripple.visible=arrow.visible=false;
+ captains.push({pip:person,upperBody:person.getObjectByName('prone-upper-body'),lowerBody:person.getObjectByName('hanging-lower-body'),emitter:person.getObjectByName('outward-fart-emitter'),ripple,aim:arrow,puffTimer:0});person.visible=ripple.visible=arrow.visible=false;
 }
 function rock(){const g=new THREE.Group();const m=mesh(new THREE.DodecahedronGeometry(1,0),'#7e9992',g);m.scale.set(1.25,.9,1);m.rotation.set(.1,.4,.12);m.position.y=.38;const top=mesh(new THREE.DodecahedronGeometry(.72,0),'#a0b5a3',g);top.position.set(-.25,.8,-.1);top.scale.y=.5;sphere('#789f69',.25,.78,.22,.52,.14,.45,g,7);return g;}
 function log(){const g=new THREE.Group();const body=cylinder('#a98258',0,.22,0,.45,.49,3.2,g,12);body.rotation.z=Math.PI/2;for(const side of [-1,1]){const end=cylinder('#e6bd7d',side*1.61,.22,0,.4,.4,.04,g,12);end.rotation.z=Math.PI/2;for(let i=1;i<3;i++){const r=torus('#ba925c',i*.13,.017,g);r.rotation.set(0,Math.PI/2,0);r.position.set(side*1.64,.22,0);}}const branch=cylinder('#a98258',.6,.7,.05,.12,.18,.7,g,7);branch.rotation.z=-.4;g.rotation.y=.2;return g;}
@@ -155,7 +154,7 @@ function resetJoystick(){joystickPointer=null;input.aimAngle=null;$('joystick-th
 function clearInput(){input.left=false;input.right=false;input.boost=false;resetJoystick();boostPointer=null;$('fart-button').classList.remove('active');}
 function updateHUD(){const captain=localCaptain();$('distance').textContent=`${Math.floor(state.distance*2)} / 800 m`;$('progress').style.width=state.distance/COURSE_LENGTH*100+'%';$('beans').textContent=String(state.beans).padStart(2,'0');$('fuel').style.width=captain.fuel+'%';$('fuel-value').textContent=Math.round(captain.fuel)+'%';$('fuel-hint').textContent=captain.fuel<5?'Catching your breath…':captain.boosting?'Pfffft! That’s the spirit.':'Hold the fart button';game.classList.toggle('low-fuel',captain.fuel<22);$('hearts').textContent='♥ '.repeat(state.lives)+'♡ '.repeat(3-state.lives);$('hearts').setAttribute('aria-label',`${state.lives} lives`);if(online)for(const chip of $('crew-hud').children){const p=state.players?.find(p=>p.id===Number(chip.dataset.id));if(p)chip.textContent=CAPTAINS[p.id].name+(p.id===voyage.localId?' · YOU':'')+' '+Math.round(p.fuel)+'%';}}
 function start(){if(online){voyage.action('restart');syncOnlineUI();return;}state=createState(Number($('crew-size').value));if(state.playerCount===1)state.angle=Math.PI;configureDeck();state.phase='playing';clearInput();buildCourse();particles.forEach(disposeParticle);particles=[];game.classList.add('playing');$('hud').hidden=false;$('fuel-panel').hidden=false;$('pause').hidden=false;$('modal').hidden=true;modalMode='';updateHUD();toast(state.playerCount===1?'Drag the joystick to move Pip. Hold the puff icon to fart!':`${Math.round(360/state.playerCount)}° of raft is yours. Aim, then puff!`);tone(420,.15);}
-function openModal(mode){if(online&&mode==='pause'){clearInput();voyage.pause();syncOnlineUI();return;}if(online&&mode==='help')voyage.pause();clearInput();returnPhase=state.phase;if(state.phase==='playing')state.phase='paused';modalMode=mode;$('modal').hidden=false;$('close-modal').hidden=mode==='result';const b=$('modal-body'),title=$('modal-title'),action=$('modal-action');if(mode==='help'){$('modal-eyebrow').textContent='CAPTAIN’S HANDBOOK';title.innerHTML='A crash course.<br>Minus the crash.';b.innerHTML='<div class="instruction"><span>↔</span><div><b>Move around your slice</b>Drag the joystick toward the part of the edge where you want Pip to rest. Pip always faces the board’s center. Arrow keys and A / D also work. Solo gets 360°. Two captains get 180° each, three get 120°, and four get 90°. Invite friends to control the other seats, or try each layout in solo practice.</div></div><div class="instruction"><span>☁</span><div><b>Aim, then let it rip</b>Hold the round puff button (or Space) to fart outward. The recoil pushes the raft inward, in the direction Pip faces. Move to the rear to speed up, or on a side to steer. Your weight and puffs tilt the board; foamy rapids and collisions rock it harder.</div></div><div class="instruction"><span>◒</span><div><b>Beans mean more breeze</b>Pick up golden beans for puff power. Release the fart button to recharge. Avoid rocks, logs, whirlpools, and the banks.</div></div><p>Reach the finish at <b>800 m</b> with at least one heart. Three splashes and your voyage is over.</p>';action.innerHTML='Got it. Let’s float <span>↗</span>';}else if(mode==='pause'){$('modal-eyebrow').textContent='A LITTLE BREATHER';title.innerHTML='Just drifting.';b.innerHTML='<p>Your voyage is paused. Pip is taking a well-deserved sniff of the fresh river air.</p>';action.innerHTML='Keep floating <span>↗</span>';}else{const won=state.phase==='won';$('modal-eyebrow').textContent=won?'VOYAGE COMPLETE':'A SMALL SPLASH';title.innerHTML=won?'You absolute<br>wind beneath us.':'Oh, capy-tain.<br>Overboard!';b.innerHTML=`<p>${won?'Pip made it down the Lazy River. A tiny captain, a mighty breeze.':'The river got the last laugh. Take another float — aim early, and save a little puff for tight spots.'}</p><div class="result-stats"><div><b>${Math.floor(state.distance*2)}<small> m</small></b><small>DISTANCE</small></div><div><b>${state.beans}</b><small>BEANS</small></div><div><b>${Math.floor(state.time)}<small> s</small></b><small>TIME</small></div></div>`;action.innerHTML='One more float <span>↗</span>';}}
+function openModal(mode){if(online&&mode==='pause'){clearInput();voyage.pause();syncOnlineUI();return;}if(online&&mode==='help')voyage.pause();clearInput();returnPhase=state.phase;if(state.phase==='playing')state.phase='paused';modalMode=mode;$('modal').hidden=false;$('close-modal').hidden=mode==='result';const b=$('modal-body'),title=$('modal-title'),action=$('modal-action');if(mode==='help'){$('modal-eyebrow').textContent='CAPTAIN’S HANDBOOK';title.innerHTML='A crash course.<br>Minus the crash.';b.innerHTML='<div class="instruction"><span>↔</span><div><b>Move around your slice</b>Drag the joystick toward the part of the edge where you want Pip to rest. Pip always faces the board’s center. Arrow keys and A / D also work. Solo gets 360°. Two captains get 180° each, three get 120°, and four get 90°. Invite friends to control the other seats, or try each layout in solo practice.</div></div><div class="instruction"><span>☁</span><div><b>Aim, then let it rip</b>Hold the round puff button (or Space) to fart outward. The recoil pushes the raft inward, in the direction Pip faces. Move to the rear to speed up, or on a side to steer. Your weight and puffs tilt the board; foamy rapids and collisions rock it harder.</div></div><div class="instruction"><span>◒</span><div><b>Beans mean more breeze</b>Pick up golden beans for puff power. Release the fart button to recharge. Avoid rocks, logs, whirlpools, and the banks.</div></div><p>Reach the finish at <b>800 m</b> with at least one heart. Three splashes and your voyage is over.</p>';action.innerHTML='Got it. Let’s float <span>↗</span>';}else if(mode==='pause'){$('modal-eyebrow').textContent='A LITTLE BREATHER';title.innerHTML='Just drifting.';b.innerHTML='<p>Your voyage is paused. Pip is taking a well-deserved sniff of the fresh river air.</p>';action.innerHTML='Keep floating <span>↗</span>';}else{const won=state.phase==='won';$('modal-eyebrow').textContent=won?'VOYAGE COMPLETE':'A SMALL SPLASH';title.innerHTML=won?'You absolute<br>wind beneath us.':'Oh, captain.<br>Overboard!';b.innerHTML=`<p>${won?'Pip made it down the Lazy River. A tiny captain, a mighty breeze.':'The river got the last laugh. Take another float — aim early, and save a little puff for tight spots.'}</p><div class="result-stats"><div><b>${Math.floor(state.distance*2)}<small> m</small></b><small>DISTANCE</small></div><div><b>${state.beans}</b><small>BEANS</small></div><div><b>${Math.floor(state.time)}<small> s</small></b><small>TIME</small></div></div>`;action.innerHTML='One more float <span>↗</span>';}}
 function closeModal(){if(online&&modalMode!=='result'){$('modal').hidden=true;modalMode='';clearInput();syncOnlineUI();return;}if(modalMode==='result'){start();return;}$('modal').hidden=true;if(state.phase==='paused')state.phase=returnPhase==='playing'?'playing':'menu';modalMode='';clearInput();}
 function syncOnlineUI(){
  if(!online)return;
@@ -272,7 +271,7 @@ renderer.render(scene,camera);
 }
 camera.position.set(8,19,25);camera.lookAt(0,.3,4);requestAnimationFrame(frame);
 // Read-only state for deterministic QA and future replay tooling.
-window.puffRiver={getView:()=>{const center=riverPoint(state.distance,state.x,state.distance),p=new THREE.Vector3(center.x,.3,center.z).project(camera),d=pip.getWorldDirection(new THREE.Vector3()).negate();return {boardCenter:{x:(p.x+1)/2,y:(1-p.y)/2},facing:{x:d.x,z:d.z},roll:{x:raft.rotation.x,z:raft.rotation.z}};},getState:()=>({...state}),getCourse:()=>course.map(({mesh,...o})=>({...o})),getInput:()=>({...input}),getPuffs:()=>particles.filter(p=>!p.vy).map(p=>({x:p.obj.position.x,z:p.obj.position.z,vx:p.vx,vz:p.vz})),getRiver:()=>({frame:riverFrame(state.distance),limits:bankLimits(state.distance),ahead:[0,12,24,36,48,60,72].map(d=>riverPoint(state.distance+d,0,state.distance))}),getNetwork:()=>({online,role:voyage.role,localId:voyage.localId,room:room.code,epoch:voyage.epoch,waiting:voyage.waiting}),version:'1.0.0'};
+window.puffRiver={getView:()=>{const center=riverPoint(state.distance,state.x,state.distance),p=new THREE.Vector3(center.x,.3,center.z).project(camera),d=pip.getWorldDirection(new THREE.Vector3()).negate();return {boardCenter:{x:(p.x+1)/2,y:(1-p.y)/2},facing:{x:d.x,z:d.z},roll:{x:raft.rotation.x,z:raft.rotation.z}};},getState:()=>({...state}),getCourse:()=>course.map(({mesh,...o})=>({...o})),getInput:()=>({...input}),getPuffs:()=>particles.filter(p=>!p.vy).map(p=>({x:p.obj.position.x,z:p.obj.position.z,vx:p.vx,vz:p.vz})),getRiver:()=>({frame:riverFrame(state.distance),limits:bankLimits(state.distance),ahead:[0,12,24,36,48,60,72].map(d=>riverPoint(state.distance+d,0,state.distance))}),getNetwork:()=>({online,role:voyage.role,localId:voyage.localId,room:room.code,epoch:voyage.epoch,waiting:voyage.waiting}),version:'1.0.1'};
 
 const invite=new URL(location.href).searchParams.get('room');if(invite&&/^\d{6}$/.test(invite)){openJoin();$('join-code').value=invite;joinOnline(invite);}
 
