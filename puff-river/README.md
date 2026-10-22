@@ -10,7 +10,7 @@ A bright 3D rafting game for one to four captains. Soft, rounded human stick fig
 - Each actual crew gets equal territories: 360°, 180°, 120°, or 90°. Captains cannot cross into another seat’s territory.
 - Drag the joystick toward your part of the edge. Hold the round puff button (or Space) to fart outward. A/D or Left/Right also move around the edge.
 - Each captain has independent puff power. Release to regenerate. Holding the puff button on an empty tank produces no thrust or gas and does not recharge it. Collected beans give every active captain double thrust for 8 playing seconds, with a visible countdown. They refresh the duration without stacking and leave fuel capacity, fuel level and hearts unchanged.
-- All captains share the raft, its three hearts, beans and the 800 m finish. Rocks, logs, whirlpools, banks and marked rapids remain active.
+- All captains share the raft, its three hearts, beans and the 800 m finish. Spiked logs, flashing bombs, pop-up spike traps, wandering saws, rocks, whirlpools, banks and marked rapids remain active. Bombs and traps show amber warnings before activating. Every obstacle row reserves an escape lane, including during expanded blasts and saw movement.
 
 Open the same game URL on each phone, on the **same Wi-Fi**. Pairing uses the free public PeerJS signaling service and requires internet access; gameplay uses direct WebRTC data channels. As in Neon Outpost, this version has no STUN or TURN relay, so guest Wi-Fi/client isolation or separate mobile networks can prevent a connection. Three.js and PeerJS are vendored with MIT notices.
 
@@ -30,7 +30,7 @@ The tests cover equal territories, recoil, tilt, deterministic bends, accurate v
 
 ## Presentation
 
-The game fills the viewport and keeps the raft centered through frequent broad river bends. All HUD and crew information stays at the top. Only the joystick and circular fart button appear at the bottom. The face-down pose, submerged legs, outward gas jets, safe shoreline geometry and damped board roll are preserved from the solo game.
+The game fills the viewport and keeps the raft centered through short S-turns and three full 180° hairpins. All HUD and crew information stays at the top. Only the joystick and circular fart button appear at the bottom. The face-down pose, submerged legs, outward gas jets, safe shoreline geometry and damped board roll are preserved from the solo game.
 
 Play: https://refreshingday.github.io/multiplayerTest/puff-river/
 
@@ -39,3 +39,5 @@ Version 1.0.2 fixes empty-tank puffing in solo, host simulation and guest predic
 Version 1.1.0 removes automatic current, adds puff-driven forward/reverse movement, and calms the water ripples and idle bobbing. Reload every phone and create a fresh protocol-3 room.
 
 Version 1.2.0 increases base thrust from 13 to 20 (about 54%), changes golden beans to an 8-second 2× team thrust boost, and adds a gentle 0.35-course-unit/s current (0.7 displayed m/s). Power-up timers freeze while paused and survive reconnection. Empty tanks still cannot puff. Reload every phone and create a fresh protocol-4 room.
+
+Version 1.3.0 replaces the monotonic river with an arc-length course that folds through all four compass directions, including three 180° hairpins and frequent 30°/60° counter-turns. The board keeps its world heading while the camera follows the river; recoil and joystick aiming use the matching frame so every captain has a forward-driving stretch. Both banks use the exact sampled collision shoreline, with narrow grass islands that do not cover neighboring channels. There are 31 obstacle rows, spiked logs, timed warning/blast bombs, timed rising spike traps, moving saws, and stronger whirlpool pulls. Solo and host collisions share the same hazard rules and animated positions; pause/reconnect preserves hazard timing. Reload every phone and create a fresh protocol-5 room.

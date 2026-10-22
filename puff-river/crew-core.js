@@ -1,4 +1,4 @@
-import {createState,territory,step,hit,makeCourse,riverPoint,collectPowerUp} from './core.js?v=1.2.0';
+import {createState,territory,step,makeCourse,stepHazards} from './core.js?v=1.3.0';
 export const CAPTAINS=Object.freeze([
  {name:'Pip',color:'#b3dca5',scarf:'#a9c281'},
  {name:'Peach',color:'#f4b0a5',scarf:'#e39892'},
@@ -15,19 +15,7 @@ export function crewEvent(s,type,data={}){s.events.push({id:s.nextEvent++,type,.
 export function stepVoyage(s,inputs,course,dt,externalPlayers=[]){
  if(s.phase!=='playing')return;const lives=s.lives;step(s,inputs,dt,externalPlayers);
  if(s.lives!==lives)crewEvent(s,'hit',{kind:'bank'});
- if(s.phase!=='playing')return;
- const raftPoint=riverPoint(s.distance,s.x,s.distance);
- for(const o of course){
-  if(o.hit)continue;const dz=o.at-s.distance;if(Math.abs(dz)>7)continue;
-  const point=riverPoint(o.at,o.x,s.distance),separation=Math.hypot(point.x-raftPoint.x,point.z-raftPoint.z);
-  if(o.kind==='whirlpool'&&Math.abs(dz)<5&&separation<5&&separation>.1){const dx=o.x-s.x;s.vx+=dx/separation*(5-separation)*dt*.6;s.rollVZ-=dx*dt*.25;s.rollVX+=dz*dt*.15;}
-  if(separation>=(o.kind==='bean'?2.45:o.radius+1.65))continue;
-  if(o.kind==='bean'){
-   o.hit=true;s.hitIds.push(o.id);collectPowerUp(s);
-   crewEvent(s,'bean',{object:o.id});
-  }else if(hit(s,Math.sign(s.x-o.x)||1,Math.sign(dz)||1)){
-   o.hit=true;s.hitIds.push(o.id);crewEvent(s,'hit',{kind:o.kind,object:o.id});
-  }
- }
+ for(const event of stepHazards(s,course,dt)){const {type,...data}=event;crewEvent(s,type,data);}
 }
+
 export function voyageCourse(s){const course=makeCourse(s.seed),hits=new Set(s.hitIds);for(const o of course)o.hit=hits.has(o.id);return course;}

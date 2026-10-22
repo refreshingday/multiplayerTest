@@ -1,5 +1,5 @@
-import {RIVER_HALF_WIDTH,RAFT_RADIUS,bankLimits} from './river.js';
-export {RIVER_HALF_WIDTH,RAFT_RADIUS,bankLimits,riverFrame,riverPoint,shorePoint,BEND_LENGTH,BEND_AMPLITUDE} from './river.js';
+import {RIVER_HALF_WIDTH,RAFT_RADIUS,bankLimits,riverFrame,riverPoint} from './river.js?v=1.3.0';
+export {RIVER_HALF_WIDTH,RAFT_RADIUS,bankLimits,riverFrame,riverPoint,shorePoint,BEND_LENGTH,BEND_AMPLITUDE} from './river.js?v=1.3.0';
 export const COURSE_LENGTH = 400;
 export const PLAYER_RADIUS = RAFT_RADIUS + .12;
 // Shared with the renderer: contact begins when the visible rim reaches the visible shore.
@@ -19,7 +19,7 @@ export function territory(playerCount=1, playerIndex=0){
 }
 export function outward(angle){return {x:Math.sin(angle),z:-Math.cos(angle)};}
 export function facing(angle){const d=outward(angle);return {x:-d.x,z:-d.z};}
-export function joystickAngle(x,y){const yaw=Math.atan2(8,21);const wx=x*Math.cos(yaw)-y*Math.sin(yaw),wz=-x*Math.sin(yaw)-y*Math.cos(yaw);return Math.atan2(wx,-wz);}
+export function joystickAngle(x,y,riverYaw=0){const yaw=Math.atan2(8,21);const wx=x*Math.cos(yaw)-y*Math.sin(yaw),wz=-x*Math.sin(yaw)-y*Math.cos(yaw);return Math.atan2(Math.sin(Math.atan2(wx,-wz)-riverYaw),Math.cos(Math.atan2(wx,-wz)-riverYaw));}
 function angleDelta(from,to){return ((to-from+Math.PI)%TAU+TAU)%TAU-Math.PI;}
 export function rapidStrength(distance){for(const start of RAPIDS){const t=(distance-start)/12;if(t>=0&&t<=1)return Math.sin(t*Math.PI);}return 0;}
 export function createState(playerCount=1,playerIndex=0){
@@ -50,11 +50,13 @@ export function step(s,input,dt,externalPlayers=[]){
  if(s.phase!=='playing')return;
  dt=Math.min(Math.max(0,dt),0.05);s.time+=dt;s.invincible=Math.max(0,s.invincible-dt);
  const captains=s.players?s.players.filter(p=>p.active):[s],count=s.playerCount;
- let thrustX=0,thrustZ=0,weightX=0,weightZ=0;
+ let thrustX=0,thrustZ=0,weightX=0,weightZ=0;const frame=riverFrame(s.distance);
+ // Seats stay anchored to the board in world space. Project each captain's
+ // recoil into the current channel frame so driving duties change at bends.
  for(const p of captains){
   if(!externalPlayers.includes(p.id))stepCaptain(p,s.players?input[p.id]||{}:input,dt,count,s.players?p.seat:s.playerIndex);
   const direction=facing(p.angle),lean=p.boosting?-.085:-.045;
-  if(p.boosting){const power=puffMultiplier(p);thrustX+=direction.x*power;thrustZ+=direction.z*power;}
+  if(p.boosting){const power=puffMultiplier(p);thrustX+=(direction.x*frame.nx+direction.z*frame.nz)*power;thrustZ-=(direction.x*frame.tx+direction.z*frame.tz)*power;}
   weightX+=Math.cos(p.angle)*lean;weightZ+=Math.sin(p.angle)*lean;
  }
  const divisor=s.players?Math.max(1,captains.length):1;
@@ -88,13 +90,39 @@ export function hit(s,side=1,front=1){
 }
 export function makeCourse(seed=712){
  let n=seed;const random=()=>{n=(n*1664525+1013904223)>>>0;return n/4294967296;};
- const objects=[],lanes=[-5.7,0,5.7];let safe=0;
- for(let row=0;row<27;row++){
-  const at=27+row*13;
+ const objects=[],lanes=[-6.5,0,6.5];let safe=0;
+ for(let row=0;row<31;row++){
+  const at=22+row*12;
   // Every row reserves a clear lane; its position shifts at most one lane per row.
   safe=Math.max(0,Math.min(2,safe+(random()>.5?1:-1)));
-  const blocked=[0,1,2].filter(i=>i!==safe);if(row<4)blocked.splice(1,1);
-  for(const i of blocked){const kind=row%5===3&&i===blocked[0]?'whirlpool':row%3===1?'log':'rock';objects.push({id:objects.length,at,x:lanes[i]+(random()-.5)*.6,kind,radius:kind==='log'?2.1:kind==='whirlpool'?1.9:1.25,hit:false});}
+  const blocked=[0,1,2].filter(i=>i!==safe);if(row<2)blocked.splice(1,1);
+  for(const i of blocked){const kinds=['rock','log','bomb','trap','whirlpool','saw'];const kind=kinds[(row+blocked.indexOf(i)*2)%kinds.length];objects.push({id:objects.length,at,x:lanes[i]+(random()-.5)*.4,kind,radius:kind==='log'?2.2:kind==='whirlpool'?1.9:kind==='trap'?1.65:kind==='saw'?1.35:kind==='bomb'?1.05:1.25,hit:false});}
   objects.push({id:objects.length,at:at-6,x:lanes[safe],kind:'bean',radius:.65,hit:false});
  }return objects;
+}
+
+// Render and host collision use the same time, position, and warning/active windows.
+export function hazardPose(o,time){
+ const cycle=(time+o.id*.73)%(o.kind==='trap'?4.8:6.2);
+ const stage=o.kind==='bomb'?(cycle<4.05?'idle':cycle<5.55?'warning':'active'):o.kind==='trap'?(cycle<2?'idle':cycle<2.8?'warning':'active'):'active';
+ return {x:o.x+(o.kind==='saw'?Math.sin(time*1.6+o.id)*.85:0),stage,radius:o.kind==='bomb'&&stage==='active'?3.2:o.radius};
+}
+export function stepHazards(s,course,dt){
+ const events=[];if(s.phase!=='playing')return events;
+ const raft=riverPoint(s.distance,s.x,s.distance);
+ for(const o of course){
+  if(s.phase!=='playing')break;
+  if(o.hit||Math.abs(o.at-s.distance)>10)continue;
+  const pose=hazardPose(o,s.time),p=riverPoint(o.at,pose.x,s.distance),separation=Math.hypot(p.x-raft.x,p.z-raft.z),dx=pose.x-s.x,dz=o.at-s.distance;
+  if(o.kind==='whirlpool'&&separation<6&&separation>.1){s.vx+=dx/separation*(6-separation)*dt*1.1;s.rollVZ-=dx*dt*.35;s.rollVX+=dz*dt*.2;}
+  if(o.kind==='trap'&&pose.stage!=='active')continue;
+  if(separation>=(o.kind==='bean'?2.45:pose.radius+RAFT_RADIUS))continue;
+  if(o.kind==='bean'){collectPowerUp(s);events.push({type:'bean',object:o.id});}
+  else if(hit(s,Math.sign(s.x-pose.x)||1,Math.sign(dz)||1)){
+   if(['bomb','saw','trap','log'].includes(o.kind)){s.vx+=(Math.sign(s.x-pose.x)||1)*(o.kind==='bomb'?5:2);s.rollVX+=1.4;s.speed*=.45;}
+   events.push({type:'hit',kind:o.kind,object:o.id});
+  }else continue;
+  o.hit=true;if(s.hitIds)s.hitIds.push(o.id);
+ }
+ return events;
 }

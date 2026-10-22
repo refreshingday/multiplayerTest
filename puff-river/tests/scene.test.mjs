@@ -66,3 +66,21 @@ test('temporary thrust power-up shows its countdown and button highlight without
  assert.equal(node('power-up-status').hidden,false);assert.match(node('power-up-status').textContent,/2× THRUST · 8s/);assert.equal(node('fart-button').classList.contains('powered'),true);assert.ok(app.getState().fuel<40);
  app.scenario({powerTime:0});app.frame(now+17);assert.equal(node('power-up-status').hidden,true);assert.equal(node('fart-button').classList.contains('powered'),false);
 });
+
+test('bomb blast rings and pop-up teeth show the same warning windows as collision',()=>{
+ const objects=context.window.puffRiver.getCourse();let now=performance.now()+20000;
+ for(const kind of ['bomb','trap']){
+  const o=objects.find(o=>o.kind===kind),period=kind==='bomb'?6.2:4.8;
+  for(const [target,stage] of (kind==='bomb'?[[1,'idle'],[4.5,'warning'],[5.8,'active']]:[[1,'idle'],[2.4,'warning'],[3.2,'active']])){
+   const s=createCrew([0,1,2,3]);s.run=1;s.phase='paused';s.distance=o.at;s.time=((target-o.id*.73)%period+period)%period;app.crew(s);app.frame(now+=17);
+   const visual=app.scene.children.find(m=>m.userData.kind===kind);assert.ok(visual.visible);assert.equal(core.hazardPose(o,s.time).stage,stage);
+   if(kind==='bomb')assert.equal(visual.getObjectByName('danger-ring').visible,stage!=='idle');
+   else assert.equal(visual.getObjectByName('trap-teeth').scale.y,stage==='active'?1:.035);
+   assert.equal(app.raft.rotation.y,0);
+  }
+ }
+});
+test('wandering saw geometry follows the shared collision position around folded river bends',()=>{
+ const o=context.window.puffRiver.getCourse().find(o=>o.kind==='saw'),s=createCrew([0,1]);s.run=1;s.phase='paused';s.distance=o.at;s.time=4.2;app.crew(s);app.frame(performance.now()+22000);
+ const visual=app.scene.children.find(m=>m.userData.kind==='saw'),pose=core.hazardPose(o,s.time),point=core.riverPoint(o.at,pose.x,s.distance);assert.ok(Math.abs(visual.position.x-point.x)<1e-9);assert.ok(Math.abs(visual.position.z-point.z)<1e-9);assert.equal(visual.getObjectByName('saw-blade').rotation.y,s.time*7);
+});

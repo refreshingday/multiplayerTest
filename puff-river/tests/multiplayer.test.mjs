@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RiverSession,RemoteCaptain,TICK,PROTOCOL,validSnapshot} from '../multiplayer.js';
 import {createCrew,stepVoyage,voyageCourse} from '../crew-core.js';
-import {territory,stepCaptain,bankLimits,PUFF,collectPowerUp} from '../core.js';
+import {territory,stepCaptain,bankLimits,riverFrame,PUFF,collectPowerUp} from '../core.js';
 function network(count=4){
  let now=0;const queue=[],clients=[],links=[];
  for(let id=0;id<count;id++){
@@ -106,4 +106,18 @@ test('host hitches retain simulation time in bounded batches and long freezes pa
  const net=network();net.ready();const host=net.clients[0];host.course=[];const before=host.state.time;
  host.update(.6,{});assert.ok(Math.abs(host.state.time-before-.2)<1e-8);host.update(0,{});host.update(0,{});assert.ok(Math.abs(host.state.time-before-.6)<1e-8);
  host.update(2.1,{});assert.equal(host.state.phase,'paused');assert.ok(Math.abs(host.state.time-before-.6)<1e-8);
+});
+
+test('the fixed board gives every captain a forward-driving stretch through the hairpins',()=>{
+ const seats=new Set();
+ for(let distance=0;distance<400;distance+=2){
+  const frame=riverFrame(distance),scores=[0,1,2,3].map(i=>{const a=i*Math.PI/2;return -Math.sin(a)*frame.tx+Math.cos(a)*frame.tz;}),seat=scores.indexOf(Math.max(...scores));seats.add(seat);
+  const s=createCrew([0,1,2,3]);s.phase='playing';s.distance=distance;stepVoyage(s,{[seat]:{boost:true}},[],TICK);assert.ok(s.speed>PUFF.current);assert.equal(s.players.filter(p=>p.fuel<100).length,1);
+ }
+ assert.deepEqual([...seats].sort(),[0,1,2,3]);
+});
+test('timed hazard hits are authoritative across all clients and preserve their phase on reconnect',()=>{
+ const net=network();net.ready();const host=net.clients[0];host.state.time=5.6;host.state.x=4.5;host.course=[{id:0,at:0,x:0,kind:'bomb',radius:1.05,hit:false}];net.tick();host.broadcast(true);net.flush();
+ for(const client of net.clients){assert.equal(client.state.lives,2);assert.deepEqual(client.state.hitIds,[0]);assert.equal(client.state.events.at(-1).kind,'bomb');}
+ net.drop(2);const time=host.state.time;net.advance(.3);assert.equal(host.state.time,time);net.restore(2);assert.equal(net.clients[2].state.time,host.state.time);assert.equal(net.clients[2].state.lives,2);
 });

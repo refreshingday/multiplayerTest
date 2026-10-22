@@ -1,10 +1,10 @@
 import * as THREE from './vendor/three.module.js';
-import {COURSE_LENGTH,PLAYER_RADIUS,RIVER_HALF_WIDTH,RAFT_RADIUS,riverFrame,riverPoint,shorePoint,bankLimits,RAPIDS,territory,facing,joystickAngle,createState,step,hit,makeCourse,PUFF,collectPowerUp,puffMultiplier} from './core.js?v=1.2.0';
-import {RoomLink} from './room.js?v=1.2.0';
-import {RiverSession} from './multiplayer.js?v=1.2.0';
-import {CAPTAINS} from './crew-core.js?v=1.2.0';
+import {COURSE_LENGTH,PLAYER_RADIUS,RIVER_HALF_WIDTH,RAFT_RADIUS,riverFrame,riverPoint,shorePoint,bankLimits,RAPIDS,territory,facing,joystickAngle,createState,step,hit,makeCourse,PUFF,collectPowerUp,puffMultiplier,hazardPose,stepHazards} from './core.js?v=1.3.0';
+import {RoomLink} from './room.js?v=1.3.0';
+import {RiverSession} from './multiplayer.js?v=1.3.0';
+import {CAPTAINS} from './crew-core.js?v=1.3.0';
 const $=id=>document.getElementById(id), game=$('game'), view=$('viewport');
-const input={left:false,right:false,boost:false,aimAngle:null};let joystickPointer=null,boostPointer=null;let state=createState(),course=[],world=[],particles=[],last=performance.now(),elapsed=0,puffTimer=0,modalMode='',returnPhase='menu',soundOn=false,audio=null,shake=0,toastTimer;
+const input={left:false,right:false,boost:false,aimAngle:null};let joystickVector=null,joystickPointer=null,boostPointer=null;let state=createState(),course=[],world=[],particles=[],last=performance.now(),elapsed=0,puffTimer=0,modalMode='',returnPhase='menu',soundOn=false,audio=null,shake=0,toastTimer;
 state.angle=2.3;
 let online=false,onlineStatus='',lastOnlineRun=0,lastDeckKey='',lastEvent=0,lastHUD=0,onlineToken=0;
 const localCaptain=()=>online?(state.players?.find(p=>p.id===voyage.localId)||state):state;
@@ -24,15 +24,15 @@ function sphere(c,x,y,z,sx,sy= sx,sz=sx,parent=scene,detail=14){const m=mesh(new
 function box(c,x,y,z,sx,sy,sz,parent=scene){const m=mesh(new THREE.BoxGeometry(sx,sy,sz),c,parent);m.position.set(x,y,z);return m;}
 function cylinder(c,x,y,z,rt,rb,h,parent=scene,n=24){const m=mesh(new THREE.CylinderGeometry(rt,rb,h,n),c,parent);m.position.set(x,y,z);return m;}
 function torus(c,r,t,parent=scene,arc=Math.PI*2){const m=mesh(new THREE.TorusGeometry(r,t,8,64,arc),c,parent);m.rotation.x=Math.PI/2;return m;}
-const water=mesh(new THREE.PlaneGeometry(240,200,48,100),'#71cbbb');water.rotation.x=-Math.PI/2;water.position.set(0,-.26,-55);water.castShadow=false;water.material.transparent=true;water.material.opacity=.78;water.material.depthWrite=false;
+const water=mesh(new THREE.PlaneGeometry(260,260,48,60),'#71cbbb');water.rotation.x=-Math.PI/2;water.position.set(0,-.26,-55);water.castShadow=false;water.material.transparent=true;water.material.opacity=.78;water.material.depthWrite=false;
 const waterPositions=water.geometry.attributes.position,baseWater=waterPositions.array.slice();
-const riverBed=box('#64bcaa',-15,-3,-55,240,.8,200);riverBed.castShadow=false;
+const riverBed=box('#64bcaa',-15,-3,-55,260,.8,260);riverBed.castShadow=false;
 const banks=[];
 function bank(side){
  const positions=[];
- for(let d=-180;d<600;d++){
-  const a=shorePoint(d,side),b=shorePoint(d+1,side),outer=side*120;
-  positions.push(a.x,-.1,a.z,b.x,-.1,b.z,outer,-.1,a.z,b.x,-.1,b.z,outer,-.1,b.z,outer,-.1,a.z);
+ for(let d=-24;d<430;d++){
+  const a=shorePoint(d,side),b=shorePoint(d+1,side),outerA=riverPoint(d,side*(RIVER_HALF_WIDTH+3.2)),outerB=riverPoint(d+1,side*(RIVER_HALF_WIDTH+3.2));
+  positions.push(a.x,-.1,a.z,b.x,-.1,b.z,outerA.x,-.1,outerA.z,b.x,-.1,b.z,outerB.x,-.1,outerB.z,outerA.x,-.1,outerA.z);
  }
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.computeVertexNormals();
  const material=new THREE.MeshStandardMaterial({color:'#b7d68a',roughness:.85,side:THREE.DoubleSide});
@@ -49,10 +49,10 @@ const streamLines=[];for(let i=0;i<110;i++){const line=mesh(new THREE.PlaneGeome
 // Bake scenery along the entire winding course; only nearby chunks render.
 const sceneryChunks=[],batches=new Map();
 for(let repeat=-1;repeat<4;repeat++)for(const {obj,startZ} of [...world,...streamLines]){
- const d=-startZ+repeat*150;if(d< -170||d>560)continue;
+ const d=-startZ+repeat*150;if(d< -20||d>425)continue;
  const clone=obj.clone(true),offset=obj.position.x,frame=riverFrame(d);
  let p=riverPoint(d,offset);
- if(Math.abs(offset)>RIVER_HALF_WIDTH){const side=Math.sign(offset);p=shorePoint(d,side);p.x+=side*(Math.abs(offset)-RIVER_HALF_WIDTH);}
+ if(Math.abs(offset)>RIVER_HALF_WIDTH){const side=Math.sign(offset);p=riverPoint(d,side*(RIVER_HALF_WIDTH+.6+(Math.abs(offset)-RIVER_HALF_WIDTH)%2));}
  clone.position.set(p.x,obj.position.y,p.z);clone.rotation.order="YXZ";clone.rotation.y+=frame.yaw;clone.updateMatrixWorld(true);
  const bucket=Math.floor(d/40);
  clone.traverse(m=>{if(!m.isMesh)return;const key=bucket+':'+m.material.uuid;let batch=batches.get(key);if(!batch){batch={material:m.material,positions:[],normals:[],cast:false,bucket};batches.set(key,batch);}const geo=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();geo.applyMatrix4(m.matrixWorld);batch.positions.push(...geo.attributes.position.array);batch.normals.push(...geo.attributes.normal.array);batch.cast ||= m.castShadow;geo.dispose();});
@@ -128,10 +128,29 @@ for(let id=1;id<4;id++){
  captains.push({pip:person,upperBody:person.getObjectByName('prone-upper-body'),lowerBody:person.getObjectByName('hanging-lower-body'),emitter:person.getObjectByName('outward-fart-emitter'),ripple,aim:arrow,puffTimer:0});person.visible=ripple.visible=arrow.visible=false;
 }
 function rock(){const g=new THREE.Group();const m=mesh(new THREE.DodecahedronGeometry(1,0),'#7e9992',g);m.scale.set(1.25,.9,1);m.rotation.set(.1,.4,.12);m.position.y=.38;const top=mesh(new THREE.DodecahedronGeometry(.72,0),'#a0b5a3',g);top.position.set(-.25,.8,-.1);top.scale.y=.5;sphere('#789f69',.25,.78,.22,.52,.14,.45,g,7);return g;}
-function log(){const g=new THREE.Group();const body=cylinder('#a98258',0,.22,0,.45,.49,3.2,g,12);body.rotation.z=Math.PI/2;for(const side of [-1,1]){const end=cylinder('#e6bd7d',side*1.61,.22,0,.4,.4,.04,g,12);end.rotation.z=Math.PI/2;for(let i=1;i<3;i++){const r=torus('#ba925c',i*.13,.017,g);r.rotation.set(0,Math.PI/2,0);r.position.set(side*1.64,.22,0);}}const branch=cylinder('#a98258',.6,.7,.05,.12,.18,.7,g,7);branch.rotation.z=-.4;g.rotation.y=.2;return g;}
+function log(){const g=new THREE.Group();const body=cylinder('#a98258',0,.22,0,.45,.49,3.2,g,12);body.rotation.z=Math.PI/2;for(const side of [-1,1]){const end=cylinder('#e6bd7d',side*1.61,.22,0,.4,.4,.04,g,12);end.rotation.z=Math.PI/2;for(let i=1;i<3;i++){const r=torus('#ba925c',i*.13,.017,g);r.rotation.set(0,Math.PI/2,0);r.position.set(side*1.64,.22,0);}}const branch=cylinder('#a98258',.6,.7,.05,.12,.18,.7,g,7);branch.rotation.z=-.4;for(let i=-2;i<=2;i++){const spike=mesh(new THREE.ConeGeometry(.19,.85,5),'#b3c9cd',g);spike.position.set(i*.65,.92,0);for(const side of [-1,1]){const tooth=mesh(new THREE.ConeGeometry(.17,.65,5),'#859ba6',g);tooth.position.set(i*.65,.25,side*.64);tooth.rotation.x=side*Math.PI/2;}}for(const side of [-1,1]){const point=mesh(new THREE.ConeGeometry(.24,.7,5),'#b3c9cd',g);point.rotation.z=-side*Math.PI/2;point.position.set(side*1.95,.22,0);}g.rotation.y=.2;return g;}
 function whirlpool(){const g=new THREE.Group();for(let i=0;i<5;i++){const ring=torus(i%2?'#a4e3cf':'#3b9f9b',.3+i*.32,.065,g,Math.PI*1.85);ring.position.y=-.16+i*.004;ring.rotation.z=i*.55;}const center=cylinder('#348e90',0,-.19,0,.35,.2,.03,g);center.castShadow=false;return g;}
 function bean(){const g=new THREE.Group();sphere('#f8dd76',-.12,0,0,.22,.29,.2,g);sphere('#eed168',.12,.16,0,.23,.3,.2,g);const seam=torus('#c39b50',.16,.015,g,Math.PI);seam.rotation.set(0,0,-.6);seam.position.set(0,.06,-.185);g.rotation.z=-.5;g.position.y=.8;return g;}
-function buildCourse(){for(const o of course){scene.remove(o.mesh);o.mesh.traverse(m=>{if(m.geometry)m.geometry.dispose();});}course=makeCourse(state.seed);for(const o of course){o.mesh=o.kind==='rock'?rock():o.kind==='log'?log():o.kind==='whirlpool'?whirlpool():bean();const p=riverPoint(o.at,o.x);o.mesh.position.x=p.x;o.mesh.position.z=p.z;scene.add(o.mesh);}}
+function bomb(){
+ const g=new THREE.Group();g.name='fuse-bomb';sphere('#394857',0,.55,0,1.05,1.05,1.05,g);cylinder('#6c8291',0,1.48,0,.22,.28,.3,g,10);
+ const fuse=mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0,1.6,0),new THREE.Vector3(.2,1.95,0),new THREE.Vector3(.45,1.85,0)]),8,.06,5,false),'#cbb176',g);
+ const spark=sphere('#ffba57',.47,1.88,0,.18,.18,.18,g);spark.name='fuse-spark';
+ for(const x of [-.3,.3]){sphere('#fff0d4',x,.72,.91,.16,.21,.08,g);sphere('#394857',x,.7,.99,.07,.1,.04,g);}
+ const ring=torus('#ffad4f',3.2,.085,g);ring.position.y=-.13;ring.name='danger-ring';return g;
+}
+function spikeTrap(){
+ const g=new THREE.Group();g.name='pop-up-spike-trap';cylinder('#7e94a1',0,-.05,0,1.65,1.65,.2,g,12);const rim=torus('#ffd26b',1.55,.12,g);rim.position.y=.07;rim.name='danger-ring';
+ const teeth=new THREE.Group();teeth.name='trap-teeth';g.add(teeth);for(let i=0;i<7;i++){const a=i*Math.PI/3;const spike=mesh(new THREE.ConeGeometry(.23,1.5,5),'#d6e3e5',teeth);spike.position.set(i===6?0:Math.cos(a)*1.05,.7,i===6?0:Math.sin(a)*1.05);}
+ return g;
+}
+function saw(){
+ const g=new THREE.Group();g.name='wandering-saw';cylinder('#f5be69',0,-.12,0,1.2,1.25,.3,g,16);
+ const blade=new THREE.Group();blade.name='saw-blade';blade.position.y=.12;g.add(blade);cylinder('#a3b7c1',0,0,0,1.05,1.05,.16,blade,20);
+ for(let i=0;i<12;i++){const a=i*Math.PI/6;const tooth=mesh(new THREE.ConeGeometry(.22,.52,3),'#d8e4e5',blade);tooth.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(Math.cos(a),0,Math.sin(a)));tooth.position.set(Math.cos(a)*1.1,0,Math.sin(a)*1.1);}
+ cylinder('#ec7e61',0,.16,0,.3,.3,.2,blade,12);return g;
+}
+const hazardFactories={rock,log,whirlpool,bean,bomb,trap:spikeTrap,saw};
+function buildCourse(){for(const o of course){scene.remove(o.mesh);o.mesh.traverse(m=>{if(m.geometry)m.geometry.dispose();});}course=makeCourse(state.seed);for(const o of course){o.mesh=hazardFactories[o.kind]();o.mesh.userData.kind=o.kind;const p=riverPoint(o.at,o.x);o.mesh.position.x=p.x;o.mesh.position.z=p.z;scene.add(o.mesh);}}
 buildCourse();
 const finish=new THREE.Group();for(const side of [-1,1]){cylinder('#f6e8b9',side*10,2,0,.12,.12,4,finish,10);sphere('#e6b394',side*10,4.1,0,.22,.22,.22,finish);}
 const banner=box('#fff4ce',0,3.65,0,20,.7,.07,finish);for(let i=-9;i<10;i++){const flag=mesh(new THREE.ConeGeometry(.25,.55,3),'#dd9288',finish);flag.rotation.z=Math.PI;flag.position.set(i,3.1,0);}scene.add(finish);
@@ -142,19 +161,29 @@ const rapidMeshes=RAPIDS.map(at=>{
  group.updateMatrixWorld(true);group.traverse(m=>{if(!m.isMesh)return;m.geometry.applyMatrix4(m.matrixWorld);const pos=m.geometry.attributes.position;for(let i=0;i<pos.count;i++){const p=riverPoint(at-pos.getZ(i),pos.getX(i));pos.setXYZ(i,p.x,pos.getY(i),p.z);}m.geometry.computeVertexNormals();m.geometry.computeBoundingSphere();m.position.set(0,0,0);m.rotation.set(0,0,0);});scene.add(group);return {at,group};
 });
 function puff(visual=captains[0],actor=state){
- raft.updateMatrixWorld(true);const origin=visual.emitter.getWorldPosition(new THREE.Vector3());const power=puffMultiplier(actor),jet=power>1?1.8:1.25;const local=facing(actor.angle),frame=riverFrame(state.distance),direction={x:frame.nx*local.x-frame.tx*local.z,z:frame.nz*local.x-frame.tz*local.z};
+ raft.updateMatrixWorld(true);const origin=visual.emitter.getWorldPosition(new THREE.Vector3());const power=puffMultiplier(actor),jet=power>1?1.8:1.25;const direction=facing(actor.angle);
  for(let i=0;i<5;i++){const p=sphere(power>1?(i%2?'#def28d':'#fff1a0'):(i%2?'#e3ebb1':'#f2edc4'),origin.x,origin.y,origin.z,power>1?.31:.25);p.castShadow=false;particles.push({obj:p,vx:-direction.x*(1.5+rand()*2)*jet+(rand()-.5),vz:-direction.z*(1.5+rand())*jet,life:0,duration:.8+rand()*.4});}
  if(soundOn)tone(70+rand()*35,.12,.035,'sawtooth');
 }
 function splash(){for(let i=0;i<14;i++){const a=rand()*Math.PI*2;const p=sphere('#dbf6df',riverPoint(state.distance,state.x,state.distance).x,.3,riverPoint(state.distance,state.x,state.distance).z,.1);p.castShadow=false;particles.push({obj:p,vx:Math.sin(a)*(2+rand()*3),vz:Math.cos(a)*(2+rand()*3),vy:2+rand()*3,life:0,duration:.65});}}
+function showVoyageEvent(event){
+ if(event.type==='bean'){tone(740,.12);toast((online?'Whole crew: ':'')+PUFF.powerMultiplier+'× thrust for '+PUFF.powerDuration+' seconds!');return;}
+ if(event.type!=='hit')return;
+ splash();shake=.4;tone(event.kind==='bomb'?65:110,.25,.07,'triangle');
+ const messages={bank:'Watch the riverbank!',bomb:'BOOM! Dodge the flashing blast ring!',trap:'Pop! Watch for the amber warning.',saw:'Buzz! That saw is on the move.',log:'Spiked log! Give those teeth some space.',whirlpool:'Caught in a swirl! Puff your way out.',rock:'Rocky waters! Keep on puffing.'};toast(messages[event.kind]||'Steer together!');
+ if(event.kind==='bomb'){
+  const o=course.find(o=>o.id===event.object),p=o?riverPoint(o.at,o.x,state.distance):riverPoint(state.distance,state.x,state.distance);
+  for(let i=0;i<22&&particles.length<220;i++){const a=i/22*Math.PI*2;const obj=sphere(i%2?'#ffb34d':'#fff0a6',p.x,.5,p.z,.25);obj.castShadow=false;particles.push({obj,vx:Math.sin(a)*7,vz:Math.cos(a)*7,vy:2,life:0,duration:.65});}
+ }
+}
 function disposeParticle(p){scene.remove(p.obj);p.obj.geometry.dispose();}
 function tone(freq,duration=.12,volume=.05,type='sine'){if(!soundOn)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();audio.resume();const osc=audio.createOscillator(),gain=audio.createGain();osc.type=type;osc.frequency.setValueAtTime(freq,audio.currentTime);osc.frequency.exponentialRampToValueAtTime(freq*.5,audio.currentTime+duration);gain.gain.setValueAtTime(volume,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);osc.connect(gain).connect(audio.destination);osc.start();osc.stop(audio.currentTime+duration);}catch{}}
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2200);}
-function resetJoystick(){joystickPointer=null;input.aimAngle=null;$('joystick-thumb').style.transform='translate(0px,0px)';$('joystick').classList.remove('active');}
+function resetJoystick(){joystickVector=null;joystickPointer=null;input.aimAngle=null;$('joystick-thumb').style.transform='translate(0px,0px)';$('joystick').classList.remove('active');}
 function clearInput(){input.left=false;input.right=false;input.boost=false;resetJoystick();boostPointer=null;$('fart-button').classList.remove('active');}
 function updateHUD(){const captain=localCaptain();$('distance').textContent=`${Math.floor(state.distance*2)} / 800 m`;$('progress').style.width=state.distance/COURSE_LENGTH*100+'%';$('beans').textContent=String(state.beans).padStart(2,'0');$('fuel').style.width=captain.fuel+'%';$('fuel-value').textContent=Math.round(captain.fuel)+'%';$('fart-button').classList.toggle('empty',captain.fuel===0);$('fart-button').classList.toggle('powered',captain.powerTime>0);$('power-up-status').hidden=!(captain.powerTime>0);$('power-up-status').textContent=PUFF.powerMultiplier+'× THRUST · '+Math.ceil(captain.powerTime||0)+'s';$('fart-button').classList.toggle('active',captain.boosting&&state.phase==='playing');$('fart-button').setAttribute('aria-label',captain.fuel===0?'Puff power empty. Release to recharge.':'Hold to fart');$('fuel-hint').textContent=captain.fuel===0?'Release to recharge':captain.fuel<5?'Catching your breath…':captain.boosting?'Pfffft! That’s the spirit.':'Hold the fart button';game.classList.toggle('low-fuel',captain.fuel<22);$('hearts').textContent='♥ '.repeat(state.lives)+'♡ '.repeat(3-state.lives);$('hearts').setAttribute('aria-label',`${state.lives} lives`);if(online)for(const chip of $('crew-hud').children){const p=state.players?.find(p=>p.id===Number(chip.dataset.id));if(p)chip.textContent=CAPTAINS[p.id].name+(p.id===voyage.localId?' · YOU':'')+' '+Math.round(p.fuel)+'%';}}
 function start(){if(online){voyage.action('restart');syncOnlineUI();return;}state=createState(Number($('crew-size').value));if(state.playerCount===1)state.angle=Math.PI;configureDeck();state.phase='playing';clearInput();buildCourse();particles.forEach(disposeParticle);particles=[];game.classList.add('playing');$('hud').hidden=false;$('fuel-panel').hidden=false;$('pause').hidden=false;$('modal').hidden=true;modalMode='';updateHUD();toast(state.playerCount===1?'Drag the joystick to move Pip. Hold the puff icon to fart!':`${Math.round(360/state.playerCount)}° of raft is yours. Aim, then puff!`);tone(420,.15);}
-function openModal(mode){if(online&&mode==='pause'){clearInput();voyage.pause();syncOnlineUI();return;}if(online&&mode==='help')voyage.pause();clearInput();returnPhase=state.phase;if(state.phase==='playing')state.phase='paused';modalMode=mode;$('modal').hidden=false;$('close-modal').hidden=mode==='result';const b=$('modal-body'),title=$('modal-title'),action=$('modal-action');if(mode==='help'){$('modal-eyebrow').textContent='CAPTAIN’S HANDBOOK';title.innerHTML='A crash course.<br>Minus the crash.';b.innerHTML='<div class="instruction"><span>↔</span><div><b>Move around your slice</b>Drag the joystick toward the part of the edge where you want Pip to rest. Pip always faces the board’s center. Arrow keys and A / D also work. Solo gets 360°. Two captains get 180° each, three get 120°, and four get 90°. Invite friends to control the other seats, or try each layout in solo practice.</div></div><div class="instruction"><span>☁</span><div><b>Aim, then let it rip</b>Hold the round puff button (or Space) to fart outward. The recoil pushes the raft inward, in the direction Pip faces. Move to the rear to go forward, the front to reverse, or a side to steer. A gentle current carries the board slowly; puffs provide most of your movement. Your weight and puffs tilt the board; foamy rapids and collisions rock it harder.</div></div><div class="instruction"><span>◒</span><div><b>Beans mean more breeze</b>Golden beans double your crew’s thrust for 8 seconds. Release the fart button to recharge. Avoid rocks, logs, whirlpools, and the banks.</div></div><p>Reach the finish at <b>800 m</b> with at least one heart. Three splashes and your voyage is over.</p>';action.innerHTML='Got it. Let’s float <span>↗</span>';}else if(mode==='pause'){$('modal-eyebrow').textContent='A LITTLE BREATHER';title.innerHTML='Just floating.';b.innerHTML='<p>Your voyage is paused. Pip is taking a well-deserved sniff of the fresh river air.</p>';action.innerHTML='Keep floating <span>↗</span>';}else{const won=state.phase==='won';$('modal-eyebrow').textContent=won?'VOYAGE COMPLETE':'A SMALL SPLASH';title.innerHTML=won?'You absolute<br>wind beneath us.':'Oh, captain.<br>Overboard!';b.innerHTML=`<p>${won?'Pip made it down the Lazy River. A tiny captain, a mighty breeze.':'The river got the last laugh. Take another float — aim early, and save a little puff for tight spots.'}</p><div class="result-stats"><div><b>${Math.floor(state.distance*2)}<small> m</small></b><small>DISTANCE</small></div><div><b>${state.beans}</b><small>BEANS</small></div><div><b>${Math.floor(state.time)}<small> s</small></b><small>TIME</small></div></div>`;action.innerHTML='One more float <span>↗</span>';}}
+function openModal(mode){if(online&&mode==='pause'){clearInput();voyage.pause();syncOnlineUI();return;}if(online&&mode==='help')voyage.pause();clearInput();returnPhase=state.phase;if(state.phase==='playing')state.phase='paused';modalMode=mode;$('modal').hidden=false;$('close-modal').hidden=mode==='result';const b=$('modal-body'),title=$('modal-title'),action=$('modal-action');if(mode==='help'){$('modal-eyebrow').textContent='CAPTAIN’S HANDBOOK';title.innerHTML='A crash course.<br>Minus the crash.';b.innerHTML='<div class="instruction"><span>↔</span><div><b>Move around your slice</b>Drag the joystick toward the part of the edge where you want Pip to rest. Pip always faces the board’s center. Arrow keys and A / D also work. Solo gets 360°. Two captains get 180° each, three get 120°, and four get 90°. Invite friends to control the other seats, or try each layout in solo practice.</div></div><div class="instruction"><span>☁</span><div><b>Aim, then let it rip</b>Hold the round puff button (or Space) to fart outward. The recoil pushes the raft inward, in the direction Pip faces. Move to the rear to go forward, the front to reverse, or a side to steer. A gentle current carries the board slowly; puffs provide most of your movement. Your weight and puffs tilt the board; foamy rapids and collisions rock it harder.</div></div><div class="instruction"><span>◒</span><div><b>Beans mean more breeze</b>Golden beans double your crew’s thrust for 8 seconds. Release the fart button to recharge. Watch flashing bombs, rising spike traps, wandering saws, spiked logs, whirlpools, and the banks. Amber warns before a bomb blasts or a trap rises. The board keeps its heading through U-turns, so take turns supplying forward thrust!</div></div><p>Reach the finish at <b>800 m</b> with at least one heart. Three splashes and your voyage is over.</p>';action.innerHTML='Got it. Let’s float <span>↗</span>';}else if(mode==='pause'){$('modal-eyebrow').textContent='A LITTLE BREATHER';title.innerHTML='Just floating.';b.innerHTML='<p>Your voyage is paused. Pip is taking a well-deserved sniff of the fresh river air.</p>';action.innerHTML='Keep floating <span>↗</span>';}else{const won=state.phase==='won';$('modal-eyebrow').textContent=won?'VOYAGE COMPLETE':'A SMALL SPLASH';title.innerHTML=won?'You absolute<br>wind beneath us.':'Oh, captain.<br>Overboard!';b.innerHTML=`<p>${won?'Pip made it down the Lazy River. A tiny captain, a mighty breeze.':'The river got the last laugh. Take another float — aim early, and save a little puff for tight spots.'}</p><div class="result-stats"><div><b>${Math.floor(state.distance*2)}<small> m</small></b><small>DISTANCE</small></div><div><b>${state.beans}</b><small>BEANS</small></div><div><b>${Math.floor(state.time)}<small> s</small></b><small>TIME</small></div></div>`;action.innerHTML='One more float <span>↗</span>';}}
 function closeModal(){if(online&&modalMode!=='result'){$('modal').hidden=true;modalMode='';clearInput();syncOnlineUI();return;}if(modalMode==='result'){start();return;}$('modal').hidden=true;if(state.phase==='paused')state.phase=returnPhase==='playing'?'playing':'menu';modalMode='';clearInput();}
 function syncOnlineUI(){
  if(!online)return;
@@ -227,7 +256,7 @@ function moveJoystick(e){
  let x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;const length=Math.hypot(x,y);
  if(length>radius){x=x/length*radius;y=y/length*radius;}
  $('joystick-thumb').style.transform=`translate(${x}px,${y}px)`;
- input.aimAngle=length>radius*.18?joystickAngle(x/radius,-y/radius):null;
+ joystickVector=length>radius*.18?{x:x/radius,y:-y/radius}:null;input.aimAngle=joystickVector?joystickAngle(joystickVector.x,joystickVector.y,riverFrame(state.distance).yaw):null;
 }
 joystick.addEventListener('pointerdown',e=>{if(state.phase!=='playing'||joystickPointer!==null)return;e.preventDefault();joystickPointer=e.pointerId;joystick.setPointerCapture(e.pointerId);joystick.classList.add('active');moveJoystick(e);});
 joystick.addEventListener('pointermove',moveJoystick);
@@ -235,21 +264,33 @@ for(const type of ['pointerup','pointercancel','lostpointercapture'])joystick.ad
 fartButton.addEventListener('pointerdown',e=>{if(state.phase!=='playing'||boostPointer!==null)return;e.preventDefault();boostPointer=e.pointerId;fartButton.setPointerCapture(e.pointerId);input.boost=true;fartButton.classList.add('active');});
 for(const type of ['pointerup','pointercancel','lostpointercapture'])fartButton.addEventListener(type,e=>{if(e.pointerId===boostPointer){boostPointer=null;input.boost=false;fartButton.classList.remove('active');}});
 function resize(){const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}window.addEventListener('resize',resize);resize();$('loading').hidden=true;
-function frame(now){requestAnimationFrame(frame);const gap=(now-last)/1000,dt=Math.min(gap,.05);last=now;elapsed+=dt;if(online){voyage.update(gap,input,!document.hidden);const view=voyage.renderState(dt);if(view)state=view;game.classList.toggle('online-running',state.phase==='playing'&&!voyage.waiting&&!document.hidden);}
+function frame(now){requestAnimationFrame(frame);const gap=(now-last)/1000,dt=Math.min(gap,.05);last=now;elapsed+=dt;if(joystickVector)input.aimAngle=joystickAngle(joystickVector.x,joystickVector.y,riverFrame(state.distance).yaw);if(online){voyage.update(gap,input,!document.hidden);const view=voyage.renderState(dt);if(view)state=view;game.classList.toggle('online-running',state.phase==='playing'&&!voyage.waiting&&!document.hidden);}
 const active=state.phase==='playing'&&(!online||!voyage.waiting);const before=state.phase;let emitPuff=false;
-if(active&&!online){const lives=state.lives,wasRapid=state.rapids;step(state,input,dt);if(wasRapid===0&&state.rapids>0)toast('Choppy water! Hang on, Pip.');if(lives!==state.lives){toast('Watch the riverbank!');splash();shake=.35;tone(110,.25,.07,'triangle');}for(const o of course){if(o.hit)continue;const dz=o.at-state.distance,obstaclePoint=riverPoint(o.at,o.x,state.distance),raftPoint=riverPoint(state.distance,state.x,state.distance),separation=Math.hypot(obstaclePoint.x-raftPoint.x,obstaclePoint.z-raftPoint.z);if(o.kind==='whirlpool'&&Math.abs(dz)<5){const dx=o.x-state.x,d=separation;if(d<5&&d>0.1){state.vx+=dx/d*(5-d)*dt*.6;state.rollVZ-=dx*dt*.25;state.rollVX+=dz*dt*.15;}}const collision=separation<(o.kind==='bean'?2.45:o.radius+1.65);if(collision&&o.kind==='bean'){o.hit=true;o.mesh.visible=false;collectPowerUp(state);tone(740,.12);toast(PUFF.powerMultiplier+'× thrust for '+PUFF.powerDuration+' seconds!');}else if(collision&&hit(state,Math.sign(state.x-o.x)||1,Math.sign(dz)||1)){o.hit=true;splash();shake=.4;tone(100,.25,.08,'triangle');toast(o.kind==='whirlpool'?'Caught in a swirl!':o.kind==='log'?'Log jam! Aim early, captain.':'Rocky waters! Keep on puffing.');}}if(state.boosting){puffTimer-=dt;if(puffTimer<=0){puffTimer=.13;emitPuff=true;}}else puffTimer=0;updateHUD();}
+if(active&&!online){const lives=state.lives,wasRapid=state.rapids;step(state,input,dt);if(wasRapid===0&&state.rapids>0)toast('Choppy water! Hang on, Pip.');if(lives!==state.lives){toast('Watch the riverbank!');splash();shake=.35;tone(110,.25,.07,'triangle');}for(const event of stepHazards(state,course,dt))showVoyageEvent(event);if(state.boosting){puffTimer-=dt;if(puffTimer<=0){puffTimer=.13;emitPuff=true;}}else puffTimer=0;updateHUD();}
 if(!online&&before==='playing'&&['won','lost'].includes(state.phase)){input.boost=false;setTimeout(()=>openModal('result'),400);if(state.phase==='won'){tone(800,.4);toast('800 m of pure puff power. You made it!');}else toast('Three splashes. One brave little captain.');}
 const moving=state.distance;
 for(const land of banks)land.position.z=moving;
 for(const {obj,at} of sceneryChunks){obj.position.z=moving;obj.visible=Math.abs(at-moving)<110;}
 for(let i=0;i<waterPositions.count;i++){const x=baseWater[i*3],y=baseWater[i*3+1];waterPositions.setZ(i,Math.sin(x*.8+y*.3+elapsed*.25)*.008+Math.sin(y*1.4+elapsed*.18)*.004);}waterPositions.needsUpdate=true;water.geometry.computeVertexNormals();
-if(online){const hits=new Set(state.hitIds||[]);for(const o of course)o.hit=hits.has(o.id);if(now-lastHUD>100){lastHUD=now;updateHUD();}for(const event of state.events||[])if(event.id>lastEvent){lastEvent=event.id;if(event.type==='bean'){tone(740,.12);toast('Whole crew: '+PUFF.powerMultiplier+'× thrust for '+PUFF.powerDuration+' seconds!');}else if(event.type==='hit'){splash();shake=.35;tone(110,.25,.07,'triangle');toast(event.kind==='bank'?'Watch the riverbank!':'A splash for the whole crew. Steer together!');}}}
-for(const o of course){const p=riverPoint(o.at,o.x,state.distance);o.mesh.position.x=p.x;o.mesh.position.z=p.z;if(o.kind==='log')o.mesh.rotation.y=riverFrame(o.at).yaw+.2;o.mesh.visible=!o.hit&&o.mesh.position.z<25&&o.mesh.position.z>-100;if(o.kind==='bean'){o.mesh.position.y=.9+Math.sin(elapsed*2+o.id)*.17;o.mesh.rotation.y=elapsed*1.3;}if(o.kind==='whirlpool')o.mesh.rotation.y=-elapsed*1.4;}
-const finishPoint=riverPoint(COURSE_LENGTH,0,state.distance);finish.position.set(finishPoint.x,0,finishPoint.z);finish.rotation.y=riverFrame(COURSE_LENGTH).yaw;
+if(online){const hits=new Set(state.hitIds||[]);for(const o of course)o.hit=hits.has(o.id);if(now-lastHUD>100){lastHUD=now;updateHUD();}for(const event of state.events||[])if(event.id>lastEvent){lastEvent=event.id;showVoyageEvent(event);}}
+for(const o of course){
+ const pose=hazardPose(o,state.time),p=riverPoint(o.at,pose.x,state.distance);o.mesh.position.x=p.x;o.mesh.position.z=p.z;
+ o.mesh.rotation.y=riverFrame(o.at).yaw+(o.kind==='log'?.2:0);o.mesh.visible=!o.hit&&Math.abs(o.at-state.distance)<85;
+ if(o.kind==='bean'){o.mesh.position.y=.9+Math.sin(elapsed*2+o.id)*.17;o.mesh.rotation.y=elapsed*1.3;}
+ if(o.kind==='whirlpool')o.mesh.rotation.y=-state.time*1.8;
+ if(o.kind==='bomb'){
+  const ring=o.mesh.getObjectByName('danger-ring');ring.visible=pose.stage!=='idle';ring.material=mat(pose.stage==='active'?'#ff704d':'#ffad4f');ring.scale.setScalar(pose.stage==='active'?1:1+Math.sin(state.time*12)*.035);
+  o.mesh.getObjectByName('fuse-spark').scale.setScalar(pose.stage==='idle'?.7:1+Math.sin(state.time*24)*.3);
+  o.mesh.children[0].material=mat(pose.stage==='active'?'#ff704d':pose.stage==='warning'&&Math.sin(state.time*18)>0?'#b76c54':'#394857');
+ }
+ if(o.kind==='trap'){o.mesh.getObjectByName('trap-teeth').scale.y=pose.stage==='active'?1:.035;const rim=o.mesh.getObjectByName('danger-ring');rim.material=mat(pose.stage==='active'?'#ff704d':pose.stage==='warning'?'#ffb54d':'#a9b6ba');rim.scale.setScalar(pose.stage==='warning'?1+Math.sin(state.time*12)*.035:1);}
+ if(o.kind==='saw')o.mesh.getObjectByName('saw-blade').rotation.y=state.time*7;
+}
+const finishPoint=riverPoint(COURSE_LENGTH,0,state.distance);finish.position.set(finishPoint.x,0,finishPoint.z);finish.rotation.y=riverFrame(COURSE_LENGTH).yaw;finish.visible=COURSE_LENGTH-state.distance<75;
 for(const {at,group} of rapidMeshes){group.position.z=state.distance;group.visible=at-state.distance<95&&at-state.distance>-35;}
 const pathFrame=riverFrame(state.distance),raftPoint=riverPoint(state.distance,state.x,state.distance);
 sun.position.set(raftPoint.x-18,30,raftPoint.z+12);sun.target.position.set(raftPoint.x,0,raftPoint.z);
-raft.position.set(raftPoint.x,.08+Math.sin(elapsed*.8)*.015,raftPoint.z);raft.rotation.y=pathFrame.yaw;
+raft.position.set(raftPoint.x,.08+Math.sin(elapsed*.8)*.015,raftPoint.z);raft.rotation.y=0;water.position.x=riverBed.position.x=raftPoint.x;water.position.z=riverBed.position.z=raftPoint.z;
 raft.rotation.z=state.rollZ+Math.sin(elapsed*.8)*.004;raft.rotation.x=state.rollX+Math.sin(elapsed*.7)*.003;
 raft.scale.setScalar(1);
 for(let id=0;id<captains.length;id++){
@@ -271,7 +312,7 @@ renderer.render(scene,camera);
 }
 camera.position.set(8,19,25);camera.lookAt(0,.3,4);requestAnimationFrame(frame);
 // Read-only state for deterministic QA and future replay tooling.
-window.puffRiver={getView:()=>{const center=riverPoint(state.distance,state.x,state.distance),p=new THREE.Vector3(center.x,.3,center.z).project(camera),d=pip.getWorldDirection(new THREE.Vector3()).negate();return {boardCenter:{x:(p.x+1)/2,y:(1-p.y)/2},facing:{x:d.x,z:d.z},roll:{x:raft.rotation.x,z:raft.rotation.z}};},getState:()=>({...state}),getCourse:()=>course.map(({mesh,...o})=>({...o})),getInput:()=>({...input}),getPuffs:()=>particles.filter(p=>!p.vy).map(p=>({x:p.obj.position.x,z:p.obj.position.z,vx:p.vx,vz:p.vz})),getRiver:()=>({frame:riverFrame(state.distance),limits:bankLimits(state.distance),ahead:[0,12,24,36,48,60,72].map(d=>riverPoint(state.distance+d,0,state.distance))}),getNetwork:()=>({online,role:voyage.role,localId:voyage.localId,room:room.code,epoch:voyage.epoch,waiting:voyage.waiting}),version:'1.2.0'};
+window.puffRiver={getView:()=>{const center=riverPoint(state.distance,state.x,state.distance),p=new THREE.Vector3(center.x,.3,center.z).project(camera),d=pip.getWorldDirection(new THREE.Vector3()).negate();return {boardCenter:{x:(p.x+1)/2,y:(1-p.y)/2},facing:{x:d.x,z:d.z},roll:{x:raft.rotation.x,z:raft.rotation.z}};},getState:()=>({...state}),getCourse:()=>course.map(({mesh,...o})=>({...o})),getInput:()=>({...input}),getPuffs:()=>particles.filter(p=>!p.vy).map(p=>({x:p.obj.position.x,z:p.obj.position.z,vx:p.vx,vz:p.vz})),getRiver:()=>({frame:riverFrame(state.distance),limits:bankLimits(state.distance),ahead:[0,12,24,36,48,60,72].map(d=>riverPoint(state.distance+d,0,state.distance))}),getNetwork:()=>({online,role:voyage.role,localId:voyage.localId,room:room.code,epoch:voyage.epoch,waiting:voyage.waiting}),version:'1.3.0'};
 
 const invite=new URL(location.href).searchParams.get('room');if(invite&&/^\d{6}$/.test(invite)){openJoin();$('join-code').value=invite;joinOnline(invite);}
 

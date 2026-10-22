@@ -1,6 +1,6 @@
-import {normalizeInput,stepCaptain,stepPuffPower,territory,COURSE_LENGTH,PUFF} from './core.js?v=1.2.0';
-import {createCrew,stepVoyage,voyageCourse} from './crew-core.js?v=1.2.0';
-export const PROTOCOL=4,TICK=1/60,MAX_FRAMES=120;
+import {normalizeInput,stepCaptain,stepPuffPower,territory,COURSE_LENGTH,PUFF} from './core.js?v=1.3.0';
+import {createCrew,stepVoyage,voyageCourse} from './crew-core.js?v=1.3.0';
+export const PROTOCOL=5,TICK=1/60,MAX_FRAMES=120;
 const copy=value=>structuredClone(value),empty=()=>normalizeInput();
 export class RemoteCaptain{
  constructor(now=0){this.done=0;this.frames=new Map();this.at=now;this.appliedAt=now;this.held=false;}

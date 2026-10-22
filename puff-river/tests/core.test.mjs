@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createState,step,hit,makeCourse,territory,facing,outward,joystickAngle,rapidStrength,COURSE_LENGTH,RIVER_HALF_WIDTH,RAFT_RADIUS,BANK_CONTACT_X,bankLimits,riverPoint,riverFrame,shorePoint,BEND_LENGTH,BEND_AMPLITUDE,PUFF,collectPowerUp} from '../core.js';
+import {createState,step,hit,makeCourse,territory,facing,outward,joystickAngle,rapidStrength,COURSE_LENGTH,RIVER_HALF_WIDTH,RAFT_RADIUS,BANK_CONTACT_X,bankLimits,riverPoint,riverFrame,shorePoint,BEND_LENGTH,BEND_AMPLITUDE,PUFF,collectPowerUp,hazardPose,stepHazards} from '../core.js';
 const run=(s,input,seconds)=>{for(let i=0;i<seconds*60;i++)step(s,input,1/60);};
 test('golden beans double thrust temporarily without adding fuel or hearts',()=>{
  const normal=createState(),powered=createState();normal.phase=powered.phase='playing';normal.angle=powered.angle=Math.PI;normal.fuel=powered.fuel=40;
@@ -30,8 +30,8 @@ test('an empty tank stays empty while held, stops thrust, and recharges only aft
 });
 test('damage has a grace period and three distinct hits end the game',()=>{const s=createState();s.phase='playing';assert.ok(hit(s));assert.equal(s.lives,2);assert.equal(hit(s),false);run(s,{},2.3);assert.ok(hit(s));run(s,{},2.3);assert.ok(hit(s));assert.equal(s.phase,'lost');assert.equal(s.lives,0);});
 test('pausing freezes gameplay, fuel, and progress',()=>{const s=createState();s.phase='paused';const before={...s};run(s,{boost:true,right:true},5);assert.deepEqual(s,before);});
-test('course generation is deterministic and includes three hazard types and beans',()=>{assert.deepEqual(makeCourse(),makeCourse());assert.notDeepEqual(makeCourse(),makeCourse(2));assert.deepEqual(new Set(makeCourse().map(o=>o.kind)),new Set(['rock','log','whirlpool','bean']));});
-test('finish triggers a win at 800 m',()=>{const s=createState();s.phase='playing';s.distance=COURSE_LENGTH-.02;s.angle=Math.PI;step(s,{},1/60);assert.equal(s.phase,'playing');assert.ok(s.distance<COURSE_LENGTH);step(s,{boost:true},.05);assert.equal(s.phase,'won');assert.equal(s.distance,COURSE_LENGTH);});
+test('course generation is deterministic and includes six distinct hazard types and beans',()=>{assert.deepEqual(makeCourse(),makeCourse());assert.notDeepEqual(makeCourse(),makeCourse(2));assert.deepEqual(new Set(makeCourse().map(o=>o.kind)),new Set(['rock','log','whirlpool','bomb','trap','saw','bean']));});
+test('finish triggers a win at 800 m',()=>{const s=createState();s.phase='playing';s.distance=COURSE_LENGTH-.02;s.angle=Math.PI-riverFrame(s.distance).yaw;step(s,{},1/60);assert.equal(s.phase,'playing');assert.ok(s.distance<COURSE_LENGTH);step(s,{boost:true},.05);assert.equal(s.phase,'won');assert.equal(s.distance,COURSE_LENGTH);});
 test('raft does not hit an invisible wall before reaching the visible shore',()=>{
  for(const side of [-1,1])for(const x of [8.3,9.2,BANK_CONTACT_X-.01]){
   const s=createState();s.phase='playing';s.x=side*x;step(s,{},1/60);
@@ -64,7 +64,45 @@ test('joystick targets use the short path around the solo circle and stop at the
 test('joystick respects every crew territory even when pointed across the board',()=>{for(const count of [2,3,4])for(let i=0;i<count;i++){const s=createState(count,i),area=territory(count,i);s.phase='playing';for(let j=0;j<8;j++){run(s,{aimAngle:j*Math.PI/4},2);assert.ok(s.angle>=area.min-1e-9&&s.angle<=area.max+1e-9);}}});
 test('joystick maps screen directions to the camera plane',()=>{const yaw=Math.atan2(8,21);assert.ok(Math.abs(joystickAngle(0,1)+yaw)<1e-9);assert.ok(Math.abs(joystickAngle(1,0)-(Math.PI/2-yaw))<1e-9);});
 
-test('course has eight broad alternating bends rather than a straight channel',()=>{const xs=[];let previous=0,turns=0;for(let d=0;d<=COURSE_LENGTH;d++){const f=riverFrame(d);xs.push(f.x);const sign=Math.sign(f.tx);if(sign&&previous&&sign!==previous)turns++;if(sign)previous=sign;}assert.ok(Math.max(...xs)-Math.min(...xs)>25);assert.ok(turns>=7);assert.ok(BEND_LENGTH/2<=50);});
+test('the river includes three complete 180-degree hairpins and frequent counter-turns',()=>{
+ const radius=16.5,starts=[18,18+radius*Math.PI*5/3,18+radius*Math.PI*10/3+40+radius*Math.PI/2+radius*Math.PI*2/3];
+ for(const start of starts){const a=riverFrame(start),b=riverFrame(start+radius*Math.PI);assert.ok(a.tx*b.tx+a.tz*b.tz<-.999999);}
+ let oldSign=0,changes=0;for(let d=1;d<=COURSE_LENGTH;d++){const turn=riverFrame(d).yaw-riverFrame(d-.01).yaw,sign=Math.abs(turn)<1e-6?0:Math.sign(turn);if(sign&&oldSign&&sign!==oldSign)changes++;if(sign)oldSign=sign;}
+ assert.ok(changes>=12);assert.ok(BEND_LENGTH<90);
+});
+test('arc-length frames remain continuous and folded channels do not cross each other',()=>{
+ for(let d=0;d<=COURSE_LENGTH;d++){
+  const f=riverFrame(d),next=riverFrame(d+.001);assert.ok(Math.abs(Math.hypot(next.x-f.x,next.z-f.z)-.001)<1e-9);assert.ok(Math.abs(f.nx*f.tx+f.nz*f.tz)<1e-12);
+  for(let b=d+45;b<=COURSE_LENGTH;b++){const q=riverFrame(b);assert.ok(Math.hypot(q.x-f.x,q.z-f.z)>2*RIVER_HALF_WIDTH+3.2,'another bank covers the channel');}
+ }
+});
 function shoreDistance(point,d,side){let best=Infinity;for(let t=Math.floor(d-10);t<d+10;t++){const a=shorePoint(t,side),b=shorePoint(t+1,side),dx=b.x-a.x,dz=b.z-a.z;const u=Math.max(0,Math.min(1,((point.x-a.x)*dx+(point.z-a.z)*dz)/(dx*dx+dz*dz)));best=Math.min(best,Math.hypot(point.x-a.x-dx*u,point.z-a.z-dz*u));}return best;}
 test('collision meets the same shoreline segments that are drawn through every bend',()=>{for(let d=0;d<=COURSE_LENGTH;d+=3){const limits=bankLimits(d);for(const side of [-1,1]){const offset=side<0?limits.left:limits.right,point=riverPoint(d,offset);assert.ok(Math.abs(shoreDistance(point,d,side)-RAFT_RADIUS)<1e-7,`bad contact at ${d}, side ${side}`);const safe=riverPoint(d,offset-side*.1);assert.ok(shoreDistance(safe,d,side)>RAFT_RADIUS+.09);}}});
-test('a puff-propelled raft stays in the river through the complete winding route',()=>{const s=createState();s.phase='playing';s.angle=Math.PI;for(let i=0;i<6000&&s.phase==='playing';i++){s.fuel=100;step(s,{boost:true},1/60);}assert.equal(s.phase,'won');assert.equal(s.lives,3);});
+test('a captain steering with the bends keeps the puff-propelled raft in the river through the complete winding route',()=>{const s=createState();s.phase='playing';s.angle=Math.PI;for(let i=0;i<6000&&s.phase==='playing';i++){s.fuel=100;step(s,{boost:true,aimAngle:Math.PI-riverFrame(s.distance).yaw},1/60);}assert.equal(s.phase,'won');assert.equal(s.lives,3);});
+
+test('joystick screen directions track the fixed board through every camera heading',()=>{
+ for(let d=0;d<400;d+=3)for(const [x,y] of [[1,0],[0,1],[-1,0],[0,-1]]){const yaw=riverFrame(d).yaw,a=joystickAngle(x,y,yaw),b=joystickAngle(x,y);assert.ok(Math.abs(Math.sin(a+yaw-b))<1e-9);assert.ok(Math.cos(a+yaw-b)>.999999);}
+});
+test('bombs warn before their blast, spare the escape lane, and knock the raft away',()=>{
+ const o={id:0,at:0,x:0,kind:'bomb',radius:1.05,hit:false},s=createState();s.phase='playing';s.x=4.5;
+ for(const time of [0,4.1,5.5]){s.time=time;assert.equal(stepHazards(s,[o],1/60).length,0);assert.equal(s.lives,3);}
+ assert.equal(hazardPose(o,4.1).stage,'warning');assert.equal(hazardPose(o,5.6).stage,'active');
+ s.x=6.5;s.time=5.6;assert.equal(stepHazards(s,[o],1/60).length,0);s.x=4.5;const events=stepHazards(s,[o],1/60);assert.equal(events[0].kind,'bomb');assert.equal(s.lives,2);assert.ok(s.vx>4);assert.ok(s.rollVX>2);assert.equal(o.hit,true);assert.equal(stepHazards(s,[o],1/60).length,0);
+});
+test('spike traps are harmless while lowered and warning, then rise with real collisions',()=>{
+ const o={id:0,at:0,x:0,kind:'trap',radius:1.65,hit:false},s=createState();s.phase='playing';
+ for(const time of [0,2.1,2.79]){s.time=time;assert.equal(stepHazards(s,[o],1/60).length,0);assert.equal(s.lives,3);}
+ s.time=2.81;assert.equal(hazardPose(o,s.time).stage,'active');assert.equal(stepHazards(s,[o],1/60)[0].kind,'trap');assert.equal(s.lives,2);
+});
+test('the moving saw uses its animated position for collision and danger pauses with the game',()=>{
+ const o={id:0,at:0,x:0,kind:'saw',radius:1.35,hit:false},s=createState();s.phase='playing';s.x=4.3;
+ s.time=3*Math.PI/(2*1.6);assert.equal(stepHazards(s,[o],1/60).length,0);s.time=Math.PI/(2*1.6);assert.ok(hazardPose(o,s.time).x>.8);assert.equal(stepHazards(s,[o],1/60)[0].kind,'saw');
+ const trap={id:0,at:0,x:0,kind:'trap',radius:1.65,hit:false};s.phase='paused';s.time=3;const before=structuredClone(s);assert.deepEqual(stepHazards(s,[trap],1/60),[]);assert.deepEqual(s,before);
+});
+test('every generated escape lane clears even expanded bomb blasts and moving saws',()=>{
+ for(const seed of [1,2,712,999]){const course=makeCourse(seed);assert.ok(course.length<=100);assert.equal(course.filter(o=>o.kind==='bean').length,31);
+  for(const bean of course.filter(o=>o.kind==='bean'))for(const o of course.filter(o=>o.kind!=='bean'&&o.at===bean.at+6)){
+   const maximum=o.kind==='bomb'?3.2:o.radius,travel=o.kind==='saw'?.85:0;assert.ok(Math.abs(o.x-bean.x)>maximum+RAFT_RADIUS+travel);
+  }
+ }
+});
