@@ -1,6 +1,6 @@
 import {PeerLink} from './peer.js';
 import {loadRoomLibrary} from './room-library.js';
-const PREFIX='puff-river-v3-',TAG='puff-river-room-v3',GRACE=120000;
+const PREFIX='puff-river-v4-',TAG='puff-river-room-v4',GRACE=120000;
 const resumeToken=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
 export class RoomLink{
  constructor(callbacks={}){this.callbacks=callbacks;this.role=null;this.localId=0;this.code='';this.session=null;}

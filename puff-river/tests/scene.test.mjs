@@ -61,3 +61,8 @@ test('holding empty puff power creates no gas or active button and releasing res
  app.input.boost=false;for(let i=0;i<60;i++){now+=1000/60;app.frame(now);}assert.ok(app.getState().fuel>10);
  app.input.boost=true;app.frame(now+17);assert.equal(app.getState().boosting,true);assert.ok(context.window.puffRiver.getPuffs().length>0);
 });
+test('temporary thrust power-up shows its countdown and button highlight without refilling fuel',()=>{
+ app.start();app.scenario({powerTime:8,fuel:40});app.input.boost=true;const now=performance.now()+12000;app.frame(now);
+ assert.equal(node('power-up-status').hidden,false);assert.match(node('power-up-status').textContent,/2× THRUST · 8s/);assert.equal(node('fart-button').classList.contains('powered'),true);assert.ok(app.getState().fuel<40);
+ app.scenario({powerTime:0});app.frame(now+17);assert.equal(node('power-up-status').hidden,true);assert.equal(node('fart-button').classList.contains('powered'),false);
+});

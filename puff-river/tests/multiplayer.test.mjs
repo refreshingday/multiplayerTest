@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RiverSession,RemoteCaptain,TICK,PROTOCOL,validSnapshot} from '../multiplayer.js';
 import {createCrew,stepVoyage,voyageCourse} from '../crew-core.js';
-import {territory,stepCaptain,bankLimits} from '../core.js';
+import {territory,stepCaptain,bankLimits,PUFF,collectPowerUp} from '../core.js';
 function network(count=4){
  let now=0;const queue=[],clients=[],links=[];
  for(let id=0;id<count;id++){
@@ -26,9 +26,16 @@ test('all guests predict their own captain immediately and reconcile acknowledge
  const guest=net.clients[1],before=guest.predicted.angle;net.tick({1:{left:true}},false);assert.ok(guest.predicted.angle<before,'prediction responds before a host snapshot arrives');
 });
 function hostPlayer(net,id){return net.clients[0].state.players.find(p=>p.id===id);}
-test('the shared raft stays still for every player when no captain farts',()=>{
+test('team power-up countdown synchronizes, survives reconnection, freezes on pause, and expires',()=>{
+ const net=network();net.ready();const host=net.clients[0];for(const p of host.members)p.fuel=40;
+ host.course=[{id:1,at:0,x:0,kind:'bean',radius:.65,hit:false}];net.tick();host.broadcast(true);net.flush();
+ for(const client of net.clients){assert.equal(client.state.beans,1);assert.ok(client.state.players.every(p=>p.powerTime===8&&p.fuel<41));}
+ net.advance(1);const left=hostPlayer(net,2).powerTime;assert.ok(left>6.9&&left<7.1);net.drop(2);net.advance(.5);assert.equal(hostPlayer(net,2).powerTime,left);net.restore(2);assert.equal(hostPlayer(net,2).powerTime,left);
+ net.advance(7.3);assert.ok(host.members.every(p=>p.powerTime===0));assert.ok(net.clients.slice(1).every(c=>c.predicted.powerTime===0));
+});
+test('the gentle current carries all four clients slowly when nobody farts',()=>{
  const net=network();net.ready();net.advance(3);
- for(const client of net.clients){assert.equal(client.state.distance,0);assert.equal(client.state.x,0);assert.equal(client.state.speed,0);assert.equal(client.state.phase,'playing');assert.ok(client.state.players.every(p=>p.fuel===100&&!p.boosting));}
+ for(const client of net.clients){assert.ok(client.state.distance>0&&client.state.distance<1.1);assert.equal(client.state.x,0);assert.equal(client.state.speed,PUFF.current);assert.equal(client.state.phase,'playing');assert.ok(client.state.players.every(p=>p.fuel===100&&!p.boosting));}
 });
 test('unreliable input redundancy tolerates loss and reordering without changing seats or double-ticking',()=>{
  const net=network();net.ready();net.clients[0].course=[];
@@ -39,9 +46,9 @@ test('unreliable input redundancy tolerates loss and reordering without changing
  net.flush();for(const [id,r] of net.clients[0].remotes){assert.ok(r.done<=net.clients[id].seq);assert.ok(r.frames.size<=120);assert.equal(hostPlayer(net,id).seat,id);assert.ok(Number.isFinite(hostPlayer(net,id).angle));}
  assert.equal(net.clients[0].state.phase,'playing');assert.ok(net.clients.every(c=>validSnapshot(c.state)));
 });
-test('only the host owns bank hits, hazard hits, pickups and shared fuel restoration',()=>{
+test('only the host owns bank hits, hazard hits, pickups and temporary team thrust boosts',()=>{
  const s=createCrew([0,1,2,3]);s.run=1;s.phase='playing';s.players.forEach(p=>p.fuel=20);
- const bean={id:1,at:0,x:0,kind:'bean',radius:.65,hit:false};stepVoyage(s,{},[bean],TICK);assert.equal(s.beans,1);assert.ok(s.players.every(p=>p.fuel>50&&p.fuel<51));stepVoyage(s,{},[bean],TICK);assert.equal(s.beans,1);assert.deepEqual(s.hitIds,[1]);
+ const bean={id:1,at:0,x:0,kind:'bean',radius:.65,hit:false};stepVoyage(s,{},[bean],TICK);assert.equal(s.beans,1);assert.ok(s.players.every(p=>p.fuel>20&&p.fuel<21&&p.powerTime===PUFF.powerDuration));stepVoyage(s,{},[bean],TICK);assert.equal(s.beans,1);assert.deepEqual(s.hitIds,[1]);
  const rock={id:2,at:s.distance,x:0,kind:'rock',radius:1.25,hit:false};stepVoyage(s,{},[rock],TICK);assert.equal(s.lives,2);stepVoyage(s,{},[rock],TICK);assert.equal(s.lives,2);
  const net=network();net.ready();const before=net.clients[0].state.lives;net.clients[0].receive({t:'hit',v:PROTOCOL,lives:0},1);net.clients[0].receive({t:'state',v:PROTOCOL,s:{lives:0}},1);assert.equal(net.clients[0].state.lives,before);
  const host=net.clients[0];host.state.x=bankLimits(host.state.distance).right+.1;host.update(TICK,{});host.broadcast(true);net.flush();assert.equal(host.state.lives,2);assert.ok(net.clients.slice(1).every(g=>g.state.lives===2));

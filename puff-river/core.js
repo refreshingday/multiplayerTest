@@ -5,6 +5,11 @@ export const PLAYER_RADIUS = RAFT_RADIUS + .12;
 // Shared with the renderer: contact begins when the visible rim reaches the visible shore.
 export const BANK_CONTACT_X = RIVER_HALF_WIDTH - RAFT_RADIUS;
 export const RAPIDS = [72, 157, 242, 327];
+export const PUFF=Object.freeze({acceleration:20,current:.35,powerMultiplier:2,powerDuration:8});
+export const puffMultiplier=p=>p.powerTime>0?PUFF.powerMultiplier:1;
+export function collectPowerUp(s){
+ s.beans++;for(const p of s.players?s.players.filter(p=>p.active):[s])p.powerTime=PUFF.powerDuration;
+}
 const TAU = Math.PI * 2;
 export function territory(playerCount=1, playerIndex=0){
  const count=Math.max(1,Math.min(4,Math.floor(playerCount)||1));
@@ -19,12 +24,13 @@ function angleDelta(from,to){return ((to-from+Math.PI)%TAU+TAU)%TAU-Math.PI;}
 export function rapidStrength(distance){for(const start of RAPIDS){const t=(distance-start)/12;if(t>=0&&t<=1)return Math.sin(t*Math.PI);}return 0;}
 export function createState(playerCount=1,playerIndex=0){
  const area=territory(playerCount,playerIndex);
- return {phase:'menu',playerCount:area.count,playerIndex:area.index,x:0,vx:0,distance:0,speed:0,angle:area.center,fuel:100,lives:3,beans:0,invincible:0,time:0,boosting:false,rollX:0,rollZ:0,rollVX:0,rollVZ:0,rapids:0};
+ return {phase:'menu',playerCount:area.count,playerIndex:area.index,x:0,vx:0,distance:0,speed:PUFF.current,angle:area.center,fuel:100,powerTime:0,lives:3,beans:0,invincible:0,time:0,boosting:false,rollX:0,rollZ:0,rollVX:0,rollVZ:0,rapids:0};
 }
 export function normalizeInput(input={}){
  return {left:input?.left===true,right:input?.right===true,boost:input?.boost===true,aimAngle:Number.isFinite(input?.aimAngle)?Math.atan2(Math.sin(input.aimAngle),Math.cos(input.aimAngle)):null};
 }
 export function stepPuffPower(p,held,dt){
+ p.powerTime=Math.max(0,(p.powerTime||0)-dt);
  // Holding an empty tank must never regenerate tiny, immediately usable bursts.
  if(!held){p.boosting=false;p.fuel=Math.min(100,p.fuel+14*dt);return;}
  const remaining=p.fuel-25*dt;p.fuel=remaining>1e-8?remaining:0;p.boosting=p.fuel>0;
@@ -48,14 +54,14 @@ export function step(s,input,dt,externalPlayers=[]){
  for(const p of captains){
   if(!externalPlayers.includes(p.id))stepCaptain(p,s.players?input[p.id]||{}:input,dt,count,s.players?p.seat:s.playerIndex);
   const direction=facing(p.angle),lean=p.boosting?-.085:-.045;
-  if(p.boosting){thrustX+=direction.x;thrustZ+=direction.z;}
+  if(p.boosting){const power=puffMultiplier(p);thrustX+=direction.x*power;thrustZ+=direction.z*power;}
   weightX+=Math.cos(p.angle)*lean;weightZ+=Math.sin(p.angle)*lean;
  }
  const divisor=s.players?Math.max(1,captains.length):1;
- s.vx+=thrustX/divisor*13*dt;s.vx*=Math.exp(-1.5*dt);s.x+=s.vx*dt;
- // Still water supplies no free current. Puffs accelerate the board; drag settles it.
- s.speed-=thrustZ/divisor*13*dt;s.speed*=Math.exp(-2.4*dt);
- if(Math.abs(s.speed)<.025&&Math.abs(thrustZ)<1e-8)s.speed=0;
+ s.vx+=thrustX/divisor*PUFF.acceleration*dt;s.vx*=Math.exp(-1.5*dt);s.x+=s.vx*dt;
+ // A gentle current remains; most movement comes from stronger, directional puffs.
+ s.speed=PUFF.current+(s.speed-PUFF.current-thrustZ/divisor*PUFF.acceleration*dt)*Math.exp(-2.4*dt);
+ if(Math.abs(s.speed-PUFF.current)<.025&&Math.abs(thrustZ)<1e-8)s.speed=PUFF.current;
  if(Math.abs(s.vx)<.025&&Math.abs(thrustX)<1e-8)s.vx=0;
  s.distance=Math.max(0,Math.min(COURSE_LENGTH,s.distance+s.speed*dt));
  if(s.distance===0&&s.speed<0)s.speed=0;

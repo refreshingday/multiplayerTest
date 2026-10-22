@@ -1,6 +1,6 @@
-import {normalizeInput,stepCaptain,stepPuffPower,territory,COURSE_LENGTH} from './core.js?v=1.1.0';
-import {createCrew,stepVoyage,voyageCourse} from './crew-core.js?v=1.1.0';
-export const PROTOCOL=3,TICK=1/60,MAX_FRAMES=120;
+import {normalizeInput,stepCaptain,stepPuffPower,territory,COURSE_LENGTH,PUFF} from './core.js?v=1.2.0';
+import {createCrew,stepVoyage,voyageCourse} from './crew-core.js?v=1.2.0';
+export const PROTOCOL=4,TICK=1/60,MAX_FRAMES=120;
 const copy=value=>structuredClone(value),empty=()=>normalizeInput();
 export class RemoteCaptain{
  constructor(now=0){this.done=0;this.frames=new Map();this.at=now;this.appliedAt=now;this.held=false;}
@@ -25,7 +25,7 @@ export function validSnapshot(s){
  if(Math.abs(s.x)>13||s.distance<0||s.distance>COURSE_LENGTH||s.lives<0||s.lives>3||!Number.isInteger(s.run)||s.run<1)return false;
  const ids=new Set(),seats=new Set();
  for(const p of s.players){
-  if(!p||!Number.isInteger(p.id)||p.id<0||p.id>3||ids.has(p.id)||!Number.isInteger(p.seat)||p.seat<0||p.seat>=s.playerCount||seats.has(p.seat)||!Number.isFinite(p.angle)||!Number.isFinite(p.fuel)||p.fuel<0||p.fuel>100)return false;
+  if(!p||!Number.isInteger(p.id)||p.id<0||p.id>3||ids.has(p.id)||!Number.isInteger(p.seat)||p.seat<0||p.seat>=s.playerCount||seats.has(p.seat)||!Number.isFinite(p.angle)||!Number.isFinite(p.fuel)||p.fuel<0||p.fuel>100||!Number.isFinite(p.powerTime)||p.powerTime<0||p.powerTime>PUFF.powerDuration)return false;
   if(!['active','connected','visible','ready','restart','boosting'].every(k=>typeof p[k]==='boolean'))return false;
   const area=territory(s.playerCount,p.seat);if(!area.unrestricted&&(p.angle<area.min-1e-6||p.angle>area.max+1e-6))return false;
   ids.add(p.id);seats.add(p.seat);

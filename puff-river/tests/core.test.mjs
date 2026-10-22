@@ -1,28 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createState,step,hit,makeCourse,territory,facing,outward,joystickAngle,rapidStrength,COURSE_LENGTH,RIVER_HALF_WIDTH,RAFT_RADIUS,BANK_CONTACT_X,bankLimits,riverPoint,riverFrame,shorePoint,BEND_LENGTH,BEND_AMPLITUDE} from '../core.js';
+import {createState,step,hit,makeCourse,territory,facing,outward,joystickAngle,rapidStrength,COURSE_LENGTH,RIVER_HALF_WIDTH,RAFT_RADIUS,BANK_CONTACT_X,bankLimits,riverPoint,riverFrame,shorePoint,BEND_LENGTH,BEND_AMPLITUDE,PUFF,collectPowerUp} from '../core.js';
 const run=(s,input,seconds)=>{for(let i=0;i<seconds*60;i++)step(s,input,1/60);};
-test('a raft at rest stays still without farting for a full minute',()=>{
- const s=createState();s.phase='playing';run(s,{},60);assert.equal(s.distance,0);assert.equal(s.x,0);assert.equal(s.speed,0);assert.equal(s.vx,0);assert.equal(s.fuel,100);assert.equal(s.phase,'playing');
+test('golden beans double thrust temporarily without adding fuel or hearts',()=>{
+ const normal=createState(),powered=createState();normal.phase=powered.phase='playing';normal.angle=powered.angle=Math.PI;normal.fuel=powered.fuel=40;
+ collectPowerUp(powered);assert.equal(powered.fuel,40);assert.equal(powered.lives,3);assert.equal(powered.powerTime,8);assert.equal(powered.beans,1);
+ step(normal,{boost:true},1/60);step(powered,{boost:true},1/60);
+ assert.ok(Math.abs((powered.speed-PUFF.current)/(normal.speed-PUFF.current)-2)<1e-9);assert.equal(powered.fuel,normal.fuel);
+ run(powered,{},3);assert.ok(powered.powerTime>4&&powered.powerTime<6);collectPowerUp(powered);assert.equal(powered.powerTime,8);
+ powered.phase='paused';run(powered,{},3);assert.equal(powered.powerTime,8);powered.phase='playing';run(powered,{},8.1);assert.equal(powered.powerTime,0);
+ const empty=createState();empty.phase='playing';empty.fuel=0;collectPowerUp(empty);step(empty,{boost:true},1/60);assert.equal(empty.fuel,0);assert.equal(empty.boosting,false);assert.equal(empty.speed,PUFF.current);
 });
-test('puffs supply forward motion and the raft settles after release without renewed drift',()=>{
+test('an idle raft drifts gently without sideways movement',()=>{
+ const s=createState();s.phase='playing';run(s,{},60);assert.ok(Math.abs(s.distance-PUFF.current*60)<1e-8);assert.equal(s.x,0);assert.equal(s.speed,PUFF.current);assert.equal(s.vx,0);assert.equal(s.fuel,100);assert.equal(s.phase,'playing');
+});
+test('puffs supply forward motion and the raft settles back to the gentle current after release',()=>{
  const s=createState();s.phase='playing';s.angle=Math.PI;run(s,{boost:true},1);assert.ok(s.distance>1);assert.ok(s.speed>3);const powered=s.distance;
- run(s,{},3);assert.ok(s.distance>powered);assert.equal(s.speed,0);assert.equal(s.vx,0);const stopped=s.distance;run(s,{},10);assert.equal(s.distance,stopped);
+ run(s,{},3);assert.ok(s.distance>powered);assert.equal(s.speed,PUFF.current);assert.equal(s.vx,0);const stopped=s.distance;run(s,{},10);assert.ok(Math.abs(s.distance-stopped-PUFF.current*10)<1e-8);
 });
 test('solo wraps around the full circle in either direction',()=>{const s=createState();s.phase='playing';run(s,{right:true},3);assert.ok(s.angle<0);run(s,{left:true},3);assert.ok(Math.abs(s.angle)<1e-9);run(s,{left:true},3);assert.ok(s.angle>0);});
 test('each crew has equal territories and all captains stay inside their own arc',()=>{for(const count of [2,3,4])for(let i=0;i<count;i++){const area=territory(count,i),s=createState(count,i);assert.ok(Math.abs(area.arc-2*Math.PI/count)<1e-9);s.phase='playing';run(s,{right:true},7);assert.equal(s.angle,area.max);run(s,{left:true},10);assert.equal(s.angle,area.min);}});
 test('Pip faces the center and the gas jet points outward at every angle',()=>{for(let a=-Math.PI;a<=Math.PI;a+=.1){const d=facing(a);assert.ok(Math.abs(d.x*Math.sin(a)+d.z*(-Math.cos(a))+1)<1e-9);const jet=outward(a);assert.ok(Math.abs(d.x+jet.x)<1e-9);assert.ok(Math.abs(d.z+jet.z)<1e-9);}});
-test('outward gas recoil moves the board inward and consumes regenerating fuel',()=>{const s=createState();s.phase='playing';run(s,{right:true},.3);run(s,{boost:true},1);assert.ok(s.x<0);assert.ok(s.speed<=0);assert.ok(s.fuel<80);const low=s.fuel;run(s,{},4);assert.ok(s.fuel>low);assert.equal(s.speed,0);const left=createState();left.phase='playing';run(left,{left:true},.3);run(left,{boost:true},1);assert.ok(left.x>0);});
+test('outward gas recoil moves the board inward and consumes regenerating fuel',()=>{const s=createState();s.phase='playing';run(s,{right:true},.3);run(s,{boost:true},1);assert.ok(s.x<0);assert.ok(s.speed<PUFF.current);assert.ok(s.fuel<80);const low=s.fuel;run(s,{},4);assert.ok(s.fuel>low);assert.equal(s.speed,PUFF.current);const left=createState();left.phase='playing';run(left,{left:true},.3);run(left,{boost:true},1);assert.ok(left.x>0);});
 test('an empty tank stays empty while held, stops thrust, and recharges only after release',()=>{
  for(const dt of [1/60,.05]){const s=createState();s.phase='playing';s.angle=Math.PI;
-  for(let i=0;i<10/dt;i++){step(s,{boost:true},dt);if(i*dt>4.1){assert.equal(s.fuel,0);assert.equal(s.boosting,false);if(i*dt>7)assert.equal(s.speed,0);}}
+  for(let i=0;i<10/dt;i++){step(s,{boost:true},dt);if(i*dt>4.1){assert.equal(s.fuel,0);assert.equal(s.boosting,false);if(i*dt>7)assert.equal(s.speed,PUFF.current);}}
   for(let i=0;i<1/dt;i++)step(s,{},dt);assert.ok(s.fuel>0);assert.equal(s.boosting,false);const fuel=s.fuel;step(s,{boost:true},dt);assert.ok(s.fuel<fuel);assert.equal(s.boosting,true);
  }
 });
 test('damage has a grace period and three distinct hits end the game',()=>{const s=createState();s.phase='playing';assert.ok(hit(s));assert.equal(s.lives,2);assert.equal(hit(s),false);run(s,{},2.3);assert.ok(hit(s));run(s,{},2.3);assert.ok(hit(s));assert.equal(s.phase,'lost');assert.equal(s.lives,0);});
 test('pausing freezes gameplay, fuel, and progress',()=>{const s=createState();s.phase='paused';const before={...s};run(s,{boost:true,right:true},5);assert.deepEqual(s,before);});
 test('course generation is deterministic and includes three hazard types and beans',()=>{assert.deepEqual(makeCourse(),makeCourse());assert.notDeepEqual(makeCourse(),makeCourse(2));assert.deepEqual(new Set(makeCourse().map(o=>o.kind)),new Set(['rock','log','whirlpool','bean']));});
-test('finish triggers a win at 800 m',()=>{const s=createState();s.phase='playing';s.distance=COURSE_LENGTH-.02;s.angle=Math.PI;step(s,{},1/60);assert.equal(s.phase,'playing');assert.equal(s.distance,COURSE_LENGTH-.02);step(s,{boost:true},.05);assert.equal(s.phase,'won');assert.equal(s.distance,COURSE_LENGTH);});
+test('finish triggers a win at 800 m',()=>{const s=createState();s.phase='playing';s.distance=COURSE_LENGTH-.02;s.angle=Math.PI;step(s,{},1/60);assert.equal(s.phase,'playing');assert.ok(s.distance<COURSE_LENGTH);step(s,{boost:true},.05);assert.equal(s.phase,'won');assert.equal(s.distance,COURSE_LENGTH);});
 test('raft does not hit an invisible wall before reaching the visible shore',()=>{
  for(const side of [-1,1])for(const x of [8.3,9.2,BANK_CONTACT_X-.01]){
   const s=createState();s.phase='playing';s.x=side*x;step(s,{},1/60);
